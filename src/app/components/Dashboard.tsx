@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import {
   Flower2, Droplets, Heart, AlertTriangle, TrendingUp, Users,
@@ -11,6 +11,14 @@ import {
 import { kpiData, heroImage, herdImage, cows, Cow } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { CowCard } from "./CowCard";
+import {
+  gaushalaApi,
+  DashboardSummary,
+  MonthlyMilkResponse,
+  TopMilkersResponse,
+  MilkTodayResponse,
+  SourceBreakdownResponse,
+} from "../api/gaushalaApi";
 
 const STATUS_COLORS = ["#FF6B00", "#E91E63", "#4FC3F7", "#1B3A6B", "#9E9E9E"];
 const SOURCE_COLORS = ["#28a745", "#FF6B00", "#1B3A6B", "#8B5CF6"];
@@ -43,15 +51,115 @@ function KPICard({ icon, label, value, subtitle, gradient }: KPICardProps) {
 
 export function Dashboard() {
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
+  const [apiSummary, setApiSummary] = useState<DashboardSummary | null>(null);
+  const [apiMonthlyMilk, setApiMonthlyMilk] = useState<MonthlyMilkResponse | null>(null);
+  const [apiTopMilkers, setApiTopMilkers] = useState<TopMilkersResponse | null>(null);
+  const [apiMilkToday, setApiMilkToday] = useState<MilkTodayResponse | null>(null);
+  const [apiSourceBreakdown, setApiSourceBreakdown] = useState<SourceBreakdownResponse | null>(null);
 
-  const topMilkers = cows
-    .filter(c => c.dailyMilk > 0)
-    .sort((a, b) => b.dailyMilk - a.dailyMilk)
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([
+      gaushalaApi.getDashboardSummary(),
+      gaushalaApi.getMonthlyMilk(12),
+      gaushalaApi.getTopMilkers(30, 8),
+      gaushalaApi.getMilkToday(),
+      gaushalaApi.getSourceBreakdown(),
+    ]).then((results) => {
+      if (cancelled) return;
+
+      const [summaryR, monthlyR, topR, todayR, sourceR] = results;
+      if (summaryR.status === "fulfilled") setApiSummary(summaryR.value);
+      if (monthlyR.status === "fulfilled") setApiMonthlyMilk(monthlyR.value);
+      if (topR.status === "fulfilled") setApiTopMilkers(topR.value);
+      if (todayR.status === "fulfilled") setApiMilkToday(todayR.value);
+      if (sourceR.status === "fulfilled") setApiSourceBreakdown(sourceR.value);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const totalCows: string | number = apiSummary?.present_in_gaushala ?? "Soon";
+  const milkingCows: string | number = apiSummary?.milking_cattle ?? "Soon";
+  const pregnantCows: string | number = apiSummary?.pregnant_cattle ?? "Soon";
+
+  const totalMilkToday: string | number =
+    apiMilkToday?.total_liters != null ? +apiMilkToday.total_liters.toFixed(1) : "Soon";
+
+  const avgMilkPerCow: string | number =
+    apiMilkToday?.total_liters != null && apiSummary?.milking_cattle
+      ? +(apiMilkToday.total_liters / Math.max(1, apiSummary.milking_cattle)).toFixed(1)
+      : "Soon";
+
+  const parseIsoYmd = (isoYmd: string): Date => {
+    // Avoid timezone issues with "YYYY-MM-DD" parsing.
+    const [y, m, d] = isoYmd.split("-").map((x) => Number(x));
+    return new Date(y, (m ?? 1) - 1, d ?? 1);
+  };
+
+  const monthKey = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}-01`;
+  };
+
+  const monthLabel = (d: Date): string => {
+    const mon = d.toLocaleString(undefined, { month: "short" });
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${mon} '${yy}`;
+  };
+
+  const buildLastMonths = (count: number): Date[] => {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    const months: Date[] = [];
+    for (let i = count - 1; i >= 0; i--) {
+      months.push(new Date(end.getFullYear(), end.getMonth() - i, 1));
+    }
+    return months;
+  };
+
+  const monthlyMilkChartData = apiMonthlyMilk
+    ? (() => {
+      const litersByMonth = new Map<string, number>();
+      for (const p of apiMonthlyMilk.points ?? []) {
+        const d = parseIsoYmd(p.month);
+        litersByMonth.set(monthKey(d), p.liters);
+      }
+
+      return buildLastMonths(12).map((d) => {
+        const key = monthKey(d);
+        return {
+          month: monthLabel(d),
+          liters: litersByMonth.get(key) ?? 0,
+        };
+      });
+    })()
+    : [];
+
+  const topMilkers = (apiTopMilkers?.items ?? [])
+    .map((m) => {
+      const matched = cows.find((c) => c.tagNumber === m.tag_number);
+      return {
+        tagNumber: m.tag_number,
+        name: m.name ?? matched?.name ?? m.tag_number,
+        liters: m.liters,
+        image: matched?.image ?? herdImage,
+        cow: matched ?? null,
+      };
+    })
     .slice(0, 8);
 
   const topBreed = [...cows]
     .sort((a, b) => b.totalBreedScore - a.totalBreedScore)
     .slice(0, 5);
+
+  const sourceBreakdownData = (apiSourceBreakdown?.items ?? []).map((it) => ({
+    source: it.acquisition_type,
+    count: it.count,
+  }));
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
@@ -64,23 +172,28 @@ export function Dashboard() {
               Somnath Temple Trust Gaushala &bull; Pure Gir Breed
             </p>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 700 }} className="text-white mb-1">
-              {kpiData.totalCows} Sacred Cows
+              {totalCows} Sacred Cows
             </h1>
-            <p style={{ fontSize: '0.8rem' }} className="text-white/70 max-w-lg">
-              Managing a herd of {kpiData.totalCows} Gir cows across {5} generations.{" "}
-              {kpiData.milkingCows} milking, {kpiData.pregnantCows} pregnant, {kpiData.calves} calves,{" "}
-              {kpiData.bulls} bulls. Avg breed score: {kpiData.avgBreedScore}/10.
-            </p>
+            {apiSummary ? (
+              <p style={{ fontSize: '0.8rem' }} className="text-white/70 max-w-lg">
+                Managing a herd of {apiSummary.present_in_gaushala} Gir cows across {5} generations.{" "}
+                {apiSummary.milking_cattle} milking, {apiSummary.pregnant_cattle} pregnant.
+              </p>
+            ) : (
+              <p style={{ fontSize: '0.8rem' }} className="text-white/70 max-w-lg">
+                Live herd metrics will appear here soon.
+              </p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={kpiData.totalCows}
+        <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={totalCows}
           subtitle={`${kpiData.femaleCount}F / ${kpiData.maleCount}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
-        <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={kpiData.milkingCows}
-          subtitle={`${kpiData.totalMilkToday}L/day total`} gradient="bg-gradient-to-br from-navy to-navy-dark" />
-        <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={kpiData.pregnantCows}
+        <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={milkingCows}
+          subtitle={typeof totalMilkToday === "number" ? `${totalMilkToday}L/day total` : "Soon"} gradient="bg-gradient-to-br from-navy to-navy-dark" />
+        <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={pregnantCows}
           subtitle="Expecting calves" gradient="bg-gradient-to-br from-pink-500 to-pink-700" />
         <KPICard icon={<Heart className="w-5 h-5 text-white" />} label="Calves" value={kpiData.calves}
           subtitle="Young ones" gradient="bg-gradient-to-br from-cyan-500 to-cyan-700" />
@@ -96,21 +209,27 @@ export function Dashboard() {
             <TrendingUp className="w-5 h-5 text-saffron" />
             <h3>Monthly Milk Production (Liters)</h3>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={kpiData.monthlyMilk}>
-              <defs>
-                <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey="liters" stroke="#FF6B00" strokeWidth={2} fill="url(#milkG)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {apiMonthlyMilk ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={monthlyMilkChartData}>
+                <defs>
+                  <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Area type="monotone" dataKey="liters" stroke="#FF6B00" strokeWidth={2} fill="url(#milkG)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+              Soon
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-saffron/10 p-5">
@@ -146,19 +265,23 @@ export function Dashboard() {
             <Activity className="w-5 h-5 text-saffron" />
             <h3>Source Breakdown</h3>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={kpiData.sourceDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="source" tick={{ fontSize: 9 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {kpiData.sourceDistribution.map((_, i) => (
-                  <Cell key={i} fill={SOURCE_COLORS[i]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {apiSourceBreakdown && sourceBreakdownData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={sourceBreakdownData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="source" tick={{ fontSize: 9 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {sourceBreakdownData.map((_, i) => (
+                    <Cell key={i} fill={SOURCE_COLORS[i % SOURCE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[160px] flex items-center justify-center text-muted-foreground">Soon</div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-saffron/10 p-5">
@@ -187,7 +310,7 @@ export function Dashboard() {
           </div>
           <div className="p-4 space-y-2">
             {[
-              { icon: <Droplets className="w-3.5 h-3.5 text-saffron" />, l: "Avg Milk/Cow", v: `${kpiData.avgMilkPerCow}L/day` },
+              { icon: <Droplets className="w-3.5 h-3.5 text-saffron" />, l: "Avg Milk/Cow", v: typeof avgMilkPerCow === "number" ? `${avgMilkPerCow}L/day` : "Soon" },
               { icon: <Shield className="w-3.5 h-3.5 text-green-500" />, l: "Top Breed Score", v: `${topBreed[0]?.totalBreedScore}/10` },
               { icon: <Flower2 className="w-3.5 h-3.5 text-navy" />, l: "Dry Cows", v: kpiData.dryCows },
               { icon: <Heart className="w-3.5 h-3.5 text-pink-500" />, l: "Healthy", v: kpiData.healthyCows },
@@ -209,26 +332,44 @@ export function Dashboard() {
           <h3 className="mb-3 flex items-center gap-2">
             <Droplets className="w-4 h-4 text-saffron" /> Top Milking Cows
           </h3>
-          <div className="space-y-2">
-            {topMilkers.map((cow, i) => (
-              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="relative">
-                  <ImageWithFallback src={cow.image} alt={cow.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-saffron/30" />
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-saffron text-white flex items-center justify-center"
-                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div>
+          {topMilkers.length > 0 ? (
+            <div className="space-y-2">
+              {topMilkers.map((m, i) => (
+                <div
+                  key={m.tagNumber}
+                  onClick={() => {
+                    if (m.cow) setSelectedCow(m.cow);
+                  }}
+                  className={`flex items-center gap-3 p-2 rounded-lg bg-muted/30 transition-colors ${m.cow ? "cursor-pointer hover:bg-muted/50" : "cursor-default"
+                    }`}
+                >
+                  <div className="relative">
+                    <ImageWithFallback
+                      src={m.image}
+                      alt={m.name}
+                      className="w-9 h-9 rounded-full object-cover border-2 border-saffron/30"
+                    />
+                    <div
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-saffron text-white flex items-center justify-center"
+                      style={{ fontSize: '0.55rem', fontWeight: 700 }}
+                    >
+                      {i + 1}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{m.name}</p>
+                    <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{m.tagNumber} &bull; last 30 days</p>
+                  </div>
+                  <div className="text-right">
+                    <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-saffron">{m.liters.toFixed(1)}L</p>
+                    <p style={{ fontSize: '0.6rem' }} className="text-muted-foreground">total</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tagNumber} &bull; Gen {cow.generation}</p>
-                </div>
-                <div className="text-right">
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-saffron">{cow.dailyMilk}L</p>
-                  <p style={{ fontSize: '0.6rem' }} className="text-muted-foreground">per day</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-[120px] flex items-center justify-center text-muted-foreground">Soon</div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-saffron/10 p-5">
