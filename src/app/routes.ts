@@ -23,7 +23,7 @@ export const router = createBrowserRouter([
         Component: Layout,
         children: [
           { index: true, Component: Dashboard },
-          { path: "all-cattle", Component: AllCattle },
+          { path: "list-cattle/:type", Component: AllCattle },
           { path: "genealogy", Component: Genealogy },
           { path: "breed-scoring", Component: BreedScoring },
           { path: "timeline", Component: Timeline },

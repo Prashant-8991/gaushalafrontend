@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft, Search, Mic, MicOff, Loader2, AlertTriangle,
@@ -67,6 +67,12 @@ const ACQUISITION_BADGE: Record<string, string> = {
 
 export function AllCattle() {
   const navigate = useNavigate();
+  const { type } = useParams<{ type: string }>();
+
+  const config = type === "milking"
+    ? { api: "http://localhost:8000/all-milking-cattle", title: "Milking Cattle", subtitle: "milking cows" }
+    : { api: "http://localhost:8000/all-present-cattle", title: "All Present Cattle", subtitle: "cattle in gaushala" };
+
   const [cattleList, setCattleList] = useState<CattleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,11 +91,13 @@ export function AllCattle() {
   /* ─── Fetch ─── */
 
   useEffect(() => {
-    fetch("http://localhost:8000/all-present-cattle")
+    setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]);
+    setSearch(""); setSelectedCow(null);
+    fetch(config.api)
       .then(r => { if (!r.ok) throw new Error(`API error ${r.status}`); return r.json(); })
       .then((data: CattleItem[]) => { setCattleList(data); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
-  }, []);
+  }, [config.api]);
 
   /* ─── Derived unique options ─── */
 
@@ -233,8 +241,8 @@ export function AllCattle() {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
           <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="text-white">All Present Cattle</h1>
-            <p style={{ fontSize: '0.75rem' }} className="text-white/70">{filtered.length} of {cattleList.length} cattle</p>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="text-white">{config.title}</h1>
+            <p style={{ fontSize: '0.75rem' }} className="text-white/70">{filtered.length} of {cattleList.length} {config.subtitle}</p>
           </div>
         </div>
       </div>
