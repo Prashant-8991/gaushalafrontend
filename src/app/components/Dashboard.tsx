@@ -330,7 +330,7 @@ export function Dashboard() {
             ))} */}
 
             {data?.top_10_milking_cattle.map((cow, i) => (
-              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+              <div key={cow.id ?? i} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="relative">
                   {/* <ImageWithFallback src={cow.image} alt={cow.name}
                     className="w-9 h-9 rounded-full object-cover border-2 border-saffron/30" />
@@ -381,7 +381,7 @@ export function Dashboard() {
             ))} */}
 
             {data?.top_10_fit_cattle.map((cow, i) => (
-              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors">
+              <div key={cow.id ?? i} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors">
                 <div className="relative">
                   <div>
                     <SiHappycow size={40} />
