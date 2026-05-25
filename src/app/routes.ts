@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./components/Dashboard";
+import { AllCattle } from "./components/AllCattle";
 import { Genealogy } from "./components/Genealogy";
 import { Timeline } from "./components/Timeline";
 import { Alerts } from "./components/Alerts";
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
         Component: Layout,
         children: [
           { index: true, Component: Dashboard },
+          { path: "all-cattle", Component: AllCattle },
           { path: "genealogy", Component: Genealogy },
           { path: "breed-scoring", Component: BreedScoring },
           { path: "timeline", Component: Timeline },

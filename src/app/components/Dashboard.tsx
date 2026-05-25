@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AnimatePresence, resolveMotionValue } from "motion/react";
+import { AnimatePresence } from "motion/react";
+import { useNavigate } from "react-router";
 import {
   Flower2, Droplets, Heart, AlertTriangle, TrendingUp, Users,
   Activity, Scale, Baby, Milk, Shield,
@@ -44,6 +45,8 @@ function KPICard({ icon, label, value, subtitle, gradient }: KPICardProps) {
 }
 
 export function Dashboard() {
+  const navigate = useNavigate();
+
   const getDashboardData = async (): Promise<DashboardApiResponse> => {
     const response = await fetch("http://localhost:8000/dashboard");
 
@@ -108,8 +111,10 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={data?.total_cattle}
-          subtitle={`${data?.total_female_cattle}F / ${data?.total_male_cattle}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
+        <div onClick={() => navigate("/all-cattle")} className="cursor-pointer">
+          <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={data?.total_cattle}
+            subtitle={`${data?.total_female_cattle}F / ${data?.total_male_cattle}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
+        </div>
         <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={data?.total_milking_cow}
           subtitle={`${kpiData.totalMilkToday}L/day total`} gradient="bg-gradient-to-br from-navy to-navy-dark" />
         <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={data?.total_pregnant_cow}
