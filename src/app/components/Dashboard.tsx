@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, resolveMotionValue } from "motion/react";
 import {
   Flower2, Droplets, Heart, AlertTriangle, TrendingUp, Users,
   Activity, Scale, Baby, Milk, Shield,
@@ -11,6 +11,8 @@ import {
 import { kpiData, heroImage, herdImage, cows, Cow } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { CowCard } from "./CowCard";
+import { useQuery } from "@tanstack/react-query";
+import { SiHappycow } from "react-icons/si";
 
 const STATUS_COLORS = ["#FF6B00", "#E91E63", "#4FC3F7", "#1B3A6B", "#9E9E9E"];
 const SOURCE_COLORS = ["#28a745", "#FF6B00", "#1B3A6B", "#8B5CF6"];
@@ -42,6 +44,28 @@ function KPICard({ icon, label, value, subtitle, gradient }: KPICardProps) {
 }
 
 export function Dashboard() {
+  const getDashboardData = async (): Promise<DashboardApiResponse> => {
+    const response = await fetch("http://localhost:8000/dashboard");
+
+    if (!response.ok) {
+      throw new Error(`An error occurred: ${response.statusText}`);
+    }
+
+    // Type casting the JSON response ensures TS knows what this data looks like
+    return response.json() as Promise<DashboardApiResponse>;
+  }
+
+  // 3. Changed the queryKey to match the data being fetched
+  const {
+    data,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: getDashboardData
+  });
+
+
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
 
   const topMilkers = cows
@@ -52,6 +76,14 @@ export function Dashboard() {
   const topBreed = [...cows]
     .sort((a, b) => b.totalBreedScore - a.totalBreedScore)
     .slice(0, 5);
+
+  if (isLoading) {
+    return "Loading ......"
+  }
+
+  if (error) {
+    return `Error: ${error}`
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
@@ -76,14 +108,14 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={kpiData.totalCows}
-          subtitle={`${kpiData.femaleCount}F / ${kpiData.maleCount}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
-        <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={kpiData.milkingCows}
+        <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={data?.total_cattle}
+          subtitle={`${data?.total_female_cattle}F / ${data?.total_male_cattle}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
+        <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={data?.total_milking_cow}
           subtitle={`${kpiData.totalMilkToday}L/day total`} gradient="bg-gradient-to-br from-navy to-navy-dark" />
-        <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={kpiData.pregnantCows}
+        <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={data?.total_pregnant_cow}
           subtitle="Expecting calves" gradient="bg-gradient-to-br from-pink-500 to-pink-700" />
-        <KPICard icon={<Heart className="w-5 h-5 text-white" />} label="Calves" value={kpiData.calves}
-          subtitle="Young ones" gradient="bg-gradient-to-br from-cyan-500 to-cyan-700" />
+        <KPICard icon={<Heart className="w-5 h-5 text-white" />} label="Calves" value={data?.total_male_calf + data?.total_female_calf}
+          subtitle={`${data?.total_female_calf}F / ${data?.total_male_calf}M`} gradient="bg-gradient-to-br from-cyan-500 to-cyan-700" />
         <KPICard icon={<Shield className="w-5 h-5 text-white" />} label="Breed Score" value={`${kpiData.avgBreedScore}`}
           subtitle="Avg out of 10" gradient="bg-gradient-to-br from-green-500 to-green-700" />
         <KPICard icon={<AlertTriangle className="w-5 h-5 text-white" />} label="Under Treatment" value={kpiData.underTreatment}
@@ -96,7 +128,7 @@ export function Dashboard() {
             <TrendingUp className="w-5 h-5 text-saffron" />
             <h3>Monthly Milk Production (Liters)</h3>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
+          {/* <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={kpiData.monthlyMilk}>
               <defs>
                 <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
@@ -109,6 +141,42 @@ export function Dashboard() {
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Area type="monotone" dataKey="liters" stroke="#FF6B00" strokeWidth={2} fill="url(#milkG)" />
+            </AreaChart>
+          </ResponsiveContainer> */}
+
+          <ResponsiveContainer width="100%" height={200}>
+            {/* Fix 1: Added || [] so the chart doesn't crash while React Query is loading */}
+            <AreaChart data={data?.month_wise_milk_production || []}>
+              <defs>
+                <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+
+              {/* Fix 2: If you used my second query, the key is "display_month". 
+        If you used the first query, change this back to "month". */}
+              <XAxis
+                dataKey="month"          /* 1. Must exactly match your JSON key */
+                tick={{ fontSize: 11 }}
+                interval={0}             /* 2. Forces Recharts to show EVERY single label */
+                angle={-45}              /* 3. (Optional) Angles the text so 11 months don't overlap */
+                textAnchor="end"         /* 4. (Optional) Aligns the angled text nicely */
+                height={60}              /* 5. (Optional) Gives the angled text enough room at the bottom */
+              />
+
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+
+              {/* Fix 3: Your SQL query aliases the sum as "total_milk", not "liters" */}
+              <Area
+                type="monotone"
+                dataKey="total_milk"
+                stroke="#FF6B00"
+                strokeWidth={2}
+                fill="url(#milkG)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -146,7 +214,7 @@ export function Dashboard() {
             <Activity className="w-5 h-5 text-saffron" />
             <h3>Source Breakdown</h3>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
+          {/* <ResponsiveContainer width="100%" height={160}>
             <BarChart data={kpiData.sourceDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="source" tick={{ fontSize: 9 }} />
@@ -155,6 +223,27 @@ export function Dashboard() {
               <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                 {kpiData.sourceDistribution.map((_, i) => (
                   <Cell key={i} fill={SOURCE_COLORS[i]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer> */}
+          <ResponsiveContainer width="100%" height={160}>
+            {/* Fallback to an empty array so Recharts doesn't complain during loading */}
+            <BarChart data={data?.source_breakdown || []}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="acquisition_type" tick={{ fontSize: 9 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+
+              {/* Corrected dataKey to match your API response */}
+              <Bar dataKey="total_cattle" radius={[6, 6, 0, 0]}>
+                {/* Added safe optional chaining (?.) before map */}
+                {data?.source_breakdown?.map((entry, i) => (
+                  <Cell
+                    key={`cell-${i}`}
+                    /* Added modulo (%) to prevent crashing if there are more bars than colors */
+                    fill={SOURCE_COLORS[i % SOURCE_COLORS.length]}
+                  />
                 ))}
               </Bar>
             </BarChart>
@@ -167,14 +256,25 @@ export function Dashboard() {
             <h3>Generations</h3>
           </div>
           <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={kpiData.generationDistribution} layout="vertical">
+            {/* Fallback to an empty array so Recharts doesn't complain during loading */}
+            <BarChart data={data?.generation || []} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis dataKey="gen" type="category" tick={{ fontSize: 9 }} width={90} />
+
+              {/* Fix 1: Changed dataKey from "gen" to "generation" */}
+              <YAxis dataKey="generation" type="category" tick={{ fontSize: 9 }} width={90} />
+
               <Tooltip />
-              <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-                {kpiData.generationDistribution.map((_, i) => (
-                  <Cell key={i} fill={GEN_COLORS[i]} />
+
+              {/* Fix 2: Changed dataKey from "count" to "total_cattle" */}
+              <Bar dataKey="total_cattle" radius={[0, 6, 6, 0]}>
+
+                {/* Fix 3: Changed the mapping source to match your actual data */}
+                {data?.generation?.map((entry, i) => (
+                  <Cell
+                    key={`cell-${i}`}
+                    fill={GEN_COLORS[i % GEN_COLORS.length]}
+                  />
                 ))}
               </Bar>
             </BarChart>
@@ -210,7 +310,7 @@ export function Dashboard() {
             <Droplets className="w-4 h-4 text-saffron" /> Top Milking Cows
           </h3>
           <div className="space-y-2">
-            {topMilkers.map((cow, i) => (
+            {/* {topMilkers.map((cow, i) => (
               <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="relative">
                   <ImageWithFallback src={cow.image} alt={cow.name}
@@ -227,6 +327,28 @@ export function Dashboard() {
                   <p style={{ fontSize: '0.6rem' }} className="text-muted-foreground">per day</p>
                 </div>
               </div>
+            ))} */}
+
+            {data?.top_10_milking_cattle.map((cow, i) => (
+              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="relative">
+                  {/* <ImageWithFallback src={cow.image} alt={cow.name}
+                    className="w-9 h-9 rounded-full object-cover border-2 border-saffron/30" />
+                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-saffron text-white flex items-center justify-center"
+                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div> */}
+                  <div>
+                    <SiHappycow size={40} />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
+                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tagNumber} &bull; Gen {cow.generation}</p>
+                </div>
+                <div className="text-right">
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-saffron">{cow.total_milk} L</p>
+                  <p style={{ fontSize: '0.6rem' }} className="text-muted-foreground">per day</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -236,7 +358,7 @@ export function Dashboard() {
             <Shield className="w-4 h-4 text-navy" /> Top Breed Scores
           </h3>
           <div className="space-y-2">
-            {topBreed.map((cow, i) => (
+            {/* {topBreed.map((cow, i) => (
               <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors">
                 <div className="relative">
                   <ImageWithFallback src={cow.image} alt={cow.name}
@@ -253,6 +375,29 @@ export function Dashboard() {
                   <div className="w-16 h-1.5 rounded-full bg-gray-200 mt-1">
                     <div className="h-full rounded-full bg-gradient-to-r from-navy to-saffron"
                       style={{ width: `${cow.totalBreedScore * 10}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))} */}
+
+            {data?.top_10_fit_cattle.map((cow, i) => (
+              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors">
+                <div className="relative">
+                  <div>
+                    <SiHappycow size={40} />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-navy text-white flex items-center justify-center"
+                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
+                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tag_number}  &bull;  Gen {cow.generation}</p>
+                </div>
+                <div className="text-right">
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-navy">{cow.total_score}</p>
+                  <div className="w-16 h-1.5 rounded-full bg-gray-200 mt-1">
+                    <div className="h-full rounded-full bg-gradient-to-r from-navy to-saffron"
+                      style={{ width: `${cow.total_score * 0.5}%` }} />
                   </div>
                 </div>
               </div>
