@@ -1,5 +1,8 @@
-interface DashboardApiResponse {
+export interface DashboardApiResponse {
     total_cattle: number | null;
+    all_cattle_data: number | null;
+    total_bull: number | null;
+    total_ox: number | null;
     total_female_cattle: number | null;
     total_male_cattle: number | null;
     total_female_calf: number | null;

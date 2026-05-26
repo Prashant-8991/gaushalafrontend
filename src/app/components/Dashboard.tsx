@@ -14,6 +14,8 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { CowCard } from "./CowCard";
 import { useQuery } from "@tanstack/react-query";
 import { SiHappycow } from "react-icons/si";
+import type { DashboardApiResponse } from "../types/dashboardResponse";
+
 
 const STATUS_COLORS = ["#FF6B00", "#E91E63", "#4FC3F7", "#1B3A6B", "#9E9E9E"];
 const SOURCE_COLORS = ["#28a745", "#FF6B00", "#1B3A6B", "#8B5CF6"];
@@ -90,29 +92,86 @@ export function Dashboard() {
     return `Error: ${error}`
   }
 
+
+  const statusDistribution = [
+    {
+      "status": "Milking", count: data?.total_milking_cow,
+    },
+    {
+      "status": "Pregnant", count: data?.total_pregnant_cow
+    },
+    {
+      "status": "Calves", count: (data?.total_male_calf + data?.total_female_calf)
+    },
+    {
+      "status": "Bull", count: data?.total_bull
+    },
+    {
+      "status": "OX", count: data?.total_ox
+    }
+  ]
+
   return (
     <div className="p-4 lg:p-6 space-y-5">
-      <div className="relative rounded-2xl overflow-hidden h-44 lg:h-52">
-        <ImageWithFallback src={heroImage} alt="Somnath Temple" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-r from-navy-dark/90 via-navy/70 to-transparent" />
-        <div className="absolute inset-0 flex items-center px-6 lg:px-10">
-          <div>
-            <p style={{ fontSize: '0.7rem' }} className="text-saffron-light tracking-widest uppercase mb-1">
-              Somnath Temple Trust Gaushala &bull; Pure Gir Breed
-            </p>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 700 }} className="text-white mb-1">
-              {kpiData.totalCows} Sacred Cows
-            </h1>
-            <p style={{ fontSize: '0.8rem' }} className="text-white/70 max-w-lg">
-              Managing a herd of {kpiData.totalCows} Gir cows across {5} generations.{" "}
-              {kpiData.milkingCows} milking, {kpiData.pregnantCows} pregnant, {kpiData.calves} calves,{" "}
-              {kpiData.bulls} bulls. Avg breed score: {kpiData.avgBreedScore}/10.
+      <div className="relative overflow-hidden rounded-3xl h-[260px] lg:h-[320px] shadow-2xl border border-white/10">
+        {/* Background Image */}
+        <img
+          src="https://t4.ftcdn.net/jpg/12/55/70/67/360_F_1255706772_VN5ObaaNkgoTLgtAIqiBmpZFTLC45EO8.jpg"
+          alt="Gaushala"
+          className="w-full h-full object-cover scale-105"
+        />
+
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#081028]/95 via-[#0f172a]/80 to-[#0f172a]/30" />
+
+        {/* Decorative Blur */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-orange-400/20 blur-3xl rounded-full" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-yellow-300/10 blur-3xl rounded-full" />
+
+        {/* Content */}
+        <div className="absolute inset-0 flex flex-col justify-between p-6 lg:p-10">
+          {/* Top Badge */}
+          <div className="flex items-start justify-between">
+            <div className="backdrop-blur-md bg-white/10 border border-white/10 rounded-full px-4 py-1.5 text-xs lg:text-sm text-orange-200 tracking-[0.2em] uppercase font-semibold">
+              Shree Somnath Temple Trust Gaushala
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 px-4 py-2 rounded-2xl backdrop-blur-md">
+              <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
+              Active Monitoring
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="max-w-4xl">
+            <div className="flex items-center gap-3 mb-3">
+              <h1 className="text-4xl lg:text-6xl font-black text-white leading-none">
+                {data?.total_cattle}
+              </h1>
+
+              <div className="h-12 w-[2px] bg-white/20" />
+
+              <div>
+                <p className="text-white text-lg lg:text-2xl font-semibold">
+                  Total Cattle
+                </p>
+                <p className="text-orange-200 text-sm tracking-wide">
+                  Gir Cattle Management System
+                </p>
+              </div>
+            </div>
+
+            <p className="text-white/75 text-sm lg:text-base leading-relaxed max-w-2xl">
+              Currently managing{" "}
+              <span className="text-white font-semibold">{data?.all_cattle_data} active cattle</span>{" "}
+              across multiple generations with real-time monitoring of health,
+              milk production, breeding, and lineage tracking.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <div onClick={() => navigate("/list-cattle/all")} className="cursor-pointer">
           <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={data?.total_cattle}
             subtitle={`${data?.total_female_cattle}F / ${data?.total_male_cattle}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
@@ -125,92 +184,169 @@ export function Dashboard() {
           subtitle="Expecting calves" gradient="bg-gradient-to-br from-pink-500 to-pink-700" />
         <KPICard icon={<Heart className="w-5 h-5 text-white" />} label="Calves" value={data?.total_male_calf + data?.total_female_calf}
           subtitle={`${data?.total_female_calf}F / ${data?.total_male_calf}M`} gradient="bg-gradient-to-br from-cyan-500 to-cyan-700" />
-        <KPICard icon={<Shield className="w-5 h-5 text-white" />} label="Breed Score" value={`${kpiData.avgBreedScore}`}
-          subtitle="Avg out of 10" gradient="bg-gradient-to-br from-green-500 to-green-700" />
-        <KPICard icon={<AlertTriangle className="w-5 h-5 text-white" />} label="Under Treatment" value={kpiData.underTreatment}
-          subtitle={`${kpiData.vaccinatedCows} vaccinated`} gradient="bg-gradient-to-br from-red-500 to-red-700" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-saffron/10 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-5 h-5 text-saffron" />
-            <h3>Monthly Milk Production (Liters)</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Area Chart Card */}
+        <div className="lg:col-span-2 h-full relative overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-11 h-11 rounded-2xl bg-orange-50 flex items-center justify-center border border-orange-100 shadow-sm">
+              <TrendingUp className="w-5 h-5 text-saffron" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">
+              Monthly Milk Production (Liters)
+            </h3>
           </div>
-          {/* <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={kpiData.monthlyMilk}>
+
+          {/* Increased height from 200 to 380 for better interaction */}
+          <ResponsiveContainer width="100%" height={380}>
+            <AreaChart
+              data={data?.month_wise_milk_production || []}
+              margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+            >
               <defs>
                 <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey="liters" stroke="#FF6B00" strokeWidth={2} fill="url(#milkG)" />
-            </AreaChart>
-          </ResponsiveContainer> */}
-
-          <ResponsiveContainer width="100%" height={200}>
-            {/* Fix 1: Added || [] so the chart doesn't crash while React Query is loading */}
-            <AreaChart data={data?.month_wise_milk_production || []}>
-              <defs>
-                <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-
-              {/* Fix 2: If you used my second query, the key is "display_month". 
-        If you used the first query, change this back to "month". */}
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
-                dataKey="month"          /* 1. Must exactly match your JSON key */
-                tick={{ fontSize: 11 }}
-                interval={0}             /* 2. Forces Recharts to show EVERY single label */
-                angle={-45}              /* 3. (Optional) Angles the text so 11 months don't overlap */
-                textAnchor="end"         /* 4. (Optional) Aligns the angled text nicely */
-                height={60}              /* 5. (Optional) Gives the angled text enough room at the bottom */
+                dataKey="month"
+                tick={{ fontSize: 12, fill: "#64748b" }}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                axisLine={false}
+                tickLine={false}
+                dy={10}
               />
-
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-
-              {/* Fix 3: Your SQL query aliases the sum as "total_milk", not "liters" */}
+              <YAxis
+                tick={{ fontSize: 12, fill: "#64748b" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "14px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+                  fontSize: "12px",
+                  backgroundColor: "rgba(255, 255, 255, 0.95)"
+                }}
+              />
               <Area
                 type="monotone"
                 dataKey="total_milk"
                 stroke="#FF6B00"
-                strokeWidth={2}
+                strokeWidth={3}
                 fill="url(#milkG)"
+                activeDot={{ r: 6, strokeWidth: 0, fill: "#FF6B00" }}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-xl border border-saffron/10 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-5 h-5 text-navy" />
-            <h3>Herd Status</h3>
+        {/* Pie Chart Card */}
+        <div className="h-full flex flex-col relative overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg">
+          {/* Decorative Background */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-200/30 rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl" />
+
+          {/* Header */}
+          <div className="relative flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-navy to-blue-900 flex items-center justify-center shadow-md">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">
+                  Herd Status
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Live cattle distribution overview
+                </p>
+              </div>
+            </div>
+            {/* Total Badge */}
+            <div className="px-3 py-1.5 rounded-xl bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
+              Total: {data?.total_cattle}
+            </div>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={kpiData.statusDistribution} cx="50%" cy="50%" innerRadius={40} outerRadius={65}
-                paddingAngle={3} dataKey="count" nameKey="status">
-                {kpiData.statusDistribution.map((_, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[i]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-1 mt-1">
-            {kpiData.statusDistribution.map((s, i) => (
-              <div key={s.status} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[i] }} />
-                <span style={{ fontSize: '0.7rem' }} className="text-muted-foreground">{s.status} ({s.count})</span>
+
+          {/* Chart */}
+          <div className="relative flex-1 flex flex-col justify-center">
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <defs>
+                  <filter id="shadow">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" floodOpacity="0.15" />
+                  </filter>
+                </defs>
+                <Pie
+                  data={statusDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={95}
+                  paddingAngle={4}
+                  dataKey="count"
+                  nameKey="status"
+                  stroke="transparent"
+                  filter="url(#shadow)"
+                >
+                  {statusDistribution.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={STATUS_COLORS[i]}
+                      className="hover:opacity-80 transition-all duration-300 cursor-pointer"
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "14px",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+                    fontSize: "12px",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* Center Info */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
+              <h2 className="text-3xl font-black text-slate-800">
+                {data?.total_cattle}
+              </h2>
+              <p className="text-xs tracking-wide uppercase text-slate-500 font-medium">
+                Total Cattle
+              </p>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            {statusDistribution.map((s, i) => (
+              <div
+                key={s.status}
+                className="group flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white/70 backdrop-blur-sm px-4 py-3 hover:shadow-md hover:border-slate-300 transition-all duration-300 cursor-default"
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full shadow-sm"
+                    style={{ backgroundColor: STATUS_COLORS[i] }}
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    {s.status}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <p className="text-base font-bold text-slate-900">
+                    {s.count}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

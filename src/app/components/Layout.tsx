@@ -75,8 +75,8 @@ function LayoutInner() {
       >
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-saffron flex items-center justify-center">
-              <Flower2 className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-lg  flex items-center justify-center">
+              <img src="https://somnath.org/static/img/somnath-logo-light.png" alt="" width={80} height={80} />
             </div>
             <div>
               <h2 className="text-white tracking-wide" style={{ fontSize: '1.1rem' }}>GauShala</h2>
