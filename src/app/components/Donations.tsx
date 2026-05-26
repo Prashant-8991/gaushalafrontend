@@ -61,7 +61,7 @@ export function Donations() {
 
   const { data: apiRecords, isLoading, error } = useQuery<DonatedOutApi[]>({
     queryKey: ["donated-out"],
-    queryFn: () => fetch("http://localhost:8000/donations/donated-out").then(r => { if (!r.ok) throw new Error("API error"); return r.json(); }),
+    queryFn: () => { const base = import.meta.env.VITE_API_URL || "http://localhost:8000"; return fetch(`${base}/donations/donated-out`).then(r => { if (!r.ok) throw new Error("API error"); return r.json(); }) },
   });
 
   const donationRecords = useMemo(() => (apiRecords ?? []).map(mapDonatedOut), [apiRecords]);

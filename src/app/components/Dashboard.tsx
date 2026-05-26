@@ -47,8 +47,10 @@ function KPICard({ icon, label, value, subtitle, gradient }: KPICardProps) {
 export function Dashboard() {
   const navigate = useNavigate();
 
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
   const getDashboardData = async (): Promise<DashboardApiResponse> => {
-    const response = await fetch("http://localhost:8000/dashboard");
+    const response = await fetch(`${API_BASE}/dashboard`);
 
     if (!response.ok) {
       throw new Error(`An error occurred: ${response.statusText}`);

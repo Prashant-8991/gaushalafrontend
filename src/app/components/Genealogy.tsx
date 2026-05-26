@@ -94,7 +94,7 @@ export function Genealogy() {
   /* ─── API fetch ─── */
   const { data: cattleList, isLoading, error } = useQuery<GenealogyCattle[]>({
     queryKey: ["genealogy-all"],
-    queryFn: () => fetch("http://localhost:8000/genealogy/all").then(r => { if (!r.ok) throw new Error("API error"); return r.json(); }),
+    queryFn: () => { const base = import.meta.env.VITE_API_URL || "http://localhost:8000"; return fetch(`${base}/genealogy/all`).then(r => { if (!r.ok) throw new Error("API error"); return r.json(); }) },
   });
 
   const cows = cattleList ?? [];

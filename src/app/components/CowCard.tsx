@@ -111,7 +111,8 @@ export function CowCard({ cow, onClose, onSelectCow }: CowCardProps) {
     setFetchError(null);
     setApiData(null);
 
-    fetch(`http://localhost:8000/cattle/${tagNumber}`)
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    fetch(`${apiBase}/cattle/${tagNumber}`)
       .then(r => {
         if (!r.ok) throw new Error(r.status === 404 ? "Cattle not found in API" : `API error ${r.status}`);
         return r.json();

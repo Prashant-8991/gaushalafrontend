@@ -71,9 +71,11 @@ export function AllCattle() {
   const navigate = useNavigate();
   const { type } = useParams<{ type: string }>();
 
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
   const config = type === "milking"
-    ? { api: "http://localhost:8000/all-milking-cattle", title: "Milking Cattle", subtitle: "milking cows" }
-    : { api: "http://localhost:8000/all-present-cattle", title: "All Present Cattle", subtitle: "cattle in gaushala" };
+    ? { api: `${API_BASE}/all-milking-cattle`, title: "Milking Cattle", subtitle: "milking cows" }
+    : { api: `${API_BASE}/all-present-cattle`, title: "All Present Cattle", subtitle: "cattle in gaushala" };
 
   const [cattleList, setCattleList] = useState<CattleItem[]>([]);
   const [loading, setLoading] = useState(true);
