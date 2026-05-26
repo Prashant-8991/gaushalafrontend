@@ -17,6 +17,8 @@ interface CattleItem {
   gender: string;
   acquisition_type: string;
   animal_type: string;
+  is_milking: number | null;
+  is_pregnant: number | null;
 }
 
 /* ─── Filter option lists ─── */
@@ -85,6 +87,8 @@ export function AllCattle() {
   const [genderFilter, setGenderFilter] = useState<string[]>([]);
   const [acqFilter, setAcqFilter] = useState<string[]>([]);
   const [animalFilter, setAnimalFilter] = useState<string[]>([]);
+  const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
+  const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
 
   const recognitionRef = useRef<any>(null);
 
@@ -92,6 +96,7 @@ export function AllCattle() {
 
   useEffect(() => {
     setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]);
+    setMilkingFilter(null); setPregnantFilter(null);
     setSearch(""); setSelectedCow(null);
     fetch(config.api)
       .then(r => { if (!r.ok) throw new Error(`API error ${r.status}`); return r.json(); })
@@ -123,11 +128,13 @@ export function AllCattle() {
       const matchGender = genderFilter.length === 0 || genderFilter.includes(c.gender);
       const matchAcq = acqFilter.length === 0 || acqFilter.includes(c.acquisition_type);
       const matchAnimal = animalFilter.length === 0 || animalFilter.includes(c.animal_type);
-      return matchSearch && matchGender && matchAcq && matchAnimal;
+      const matchMilking = milkingFilter === null || (milkingFilter ? c.is_milking === 1 : c.is_milking === 0 || c.is_milking === null);
+      const matchPregnant = pregnantFilter === null || (pregnantFilter ? c.is_pregnant === 1 : c.is_pregnant === 0 || c.is_pregnant === null);
+      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant;
     });
-  }, [cattleList, search, genderFilter, acqFilter, animalFilter]);
+  }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter]);
 
-  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length;
+  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0);
 
   /* ─── Speech ─── */
 
@@ -198,7 +205,7 @@ export function AllCattle() {
   const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
-  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); };
+  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); };
 
   /* ─── Render: loading / error ─── */
 
@@ -363,6 +370,42 @@ export function AllCattle() {
                 </div>
               </div>
 
+              {/* Milking Status */}
+              <div>
+                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
+                  Milking Status
+                </p>
+                <div className="flex gap-2">
+                  {[{ label: "Milking", value: true }, { label: "Not Milking", value: false }].map(o => (
+                    <button key={o.label} onClick={() => setMilkingFilter(milkingFilter === o.value ? null : o.value)}
+                      className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${milkingFilter === o.value
+                        ? "bg-navy text-white border-navy shadow"
+                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-saffron/40"
+                        }`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pregnancy Status */}
+              <div>
+                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
+                  Pregnancy Status
+                </p>
+                <div className="flex gap-2">
+                  {[{ label: "Pregnant", value: true }, { label: "Not Pregnant", value: false }].map(o => (
+                    <button key={o.label} onClick={() => setPregnantFilter(pregnantFilter === o.value ? null : o.value)}
+                      className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${pregnantFilter === o.value
+                        ? "bg-pink-500 text-white border-pink-500 shadow"
+                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-saffron/40"
+                        }`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </motion.div>
         )}
@@ -389,6 +432,16 @@ export function AllCattle() {
               {ANIMAL_ICONS[a] ?? ""} {a} <button onClick={() => setAnimalFilter(toggle(animalFilter, a))}><X className="w-3 h-3" /></button>
             </span>
           ))}
+          {milkingFilter !== null && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-navy/10 text-navy dark:bg-navy/30 dark:text-white border border-navy/30">
+              {milkingFilter ? "Milking" : "Not Milking"} <button onClick={() => setMilkingFilter(null)}><X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {pregnantFilter !== null && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
+              {pregnantFilter ? "Pregnant" : "Not Pregnant"} <button onClick={() => setPregnantFilter(null)}><X className="w-3 h-3" /></button>
+            </span>
+          )}
         </div>
       )}
 
@@ -434,6 +487,16 @@ export function AllCattle() {
                     {c.acquisition_type && (
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium ${ACQUISITION_BADGE[c.acquisition_type] ?? "bg-gray-100 text-gray-600"}`}>
                         {c.acquisition_type}
+                      </span>
+                    )}
+                    {c.is_milking === 1 && (
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        🥛 Milking
+                      </span>
+                    )}
+                    {c.is_pregnant === 1 && (
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
+                        🤰 Pregnant
                       </span>
                     )}
                   </div>
