@@ -113,60 +113,66 @@ export function Dashboard() {
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
-      <div className="relative overflow-hidden rounded-3xl h-[260px] lg:h-[320px] shadow-2xl border border-white/10">
+      <div className="relative overflow-hidden rounded-[32px] h-[300px] lg:h-[360px] border border-white/10 shadow-2xl group">
+
         {/* Background Image */}
         <img
           src="https://t4.ftcdn.net/jpg/12/55/70/67/360_F_1255706772_VN5ObaaNkgoTLgtAIqiBmpZFTLC45EO8.jpg"
           alt="Gaushala"
-          className="w-full h-full object-cover scale-105"
+          className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-105 transition-transform duration-700"
         />
 
-        {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#081028]/95 via-[#0f172a]/80 to-[#0f172a]/30" />
+        {/* Main Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#071021]/95 via-[#0b1324]/85 to-[#0b1324]/40" />
 
-        {/* Decorative Blur */}
-        <div className="absolute top-0 right-0 w-72 h-72 bg-orange-400/20 blur-3xl rounded-full" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-yellow-300/10 blur-3xl rounded-full" />
+        {/* Glow Effects */}
+        <div className="absolute -top-16 right-0 w-72 h-72 bg-orange-400/20 blur-3xl rounded-full" />
+        <div className="absolute -bottom-20 left-0 w-72 h-72 bg-amber-300/10 blur-3xl rounded-full" />
+
+        {/* Grid Texture */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:32px_32px]" />
 
         {/* Content */}
-        <div className="absolute inset-0 flex flex-col justify-between p-6 lg:p-10">
-          {/* Top Badge */}
-          <div className="flex items-start justify-between">
-            <div className="backdrop-blur-md bg-white/10 border border-white/10 rounded-full px-4 py-1.5 text-xs lg:text-sm text-orange-200 tracking-[0.2em] uppercase font-semibold">
-              Shree Somnath Temple Trust Gaushala
+        <div className="relative z-10 flex flex-col justify-between h-full p-6 lg:p-10">
+
+          {/* Top Section */}
+          <div className="flex items-start justify-between gap-4">
+
+            <div className="inline-flex items-center gap-2 backdrop-blur-xl bg-white/10 border border-white/10 rounded-full px-4 py-2">
+              <div className="w-2 h-2 rounded-full bg-orange-300" />
+              <span className="text-[11px] lg:text-xs uppercase tracking-[0.25em] text-orange-100 font-semibold">
+                Shree Somnath Temple Trust Gaushala
+              </span>
             </div>
 
-            <div className="hidden md:flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 px-4 py-2 rounded-2xl backdrop-blur-md">
-              <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
-              Active Monitoring
+            <div className="hidden md:flex items-center gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 backdrop-blur-xl">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-sm font-medium text-emerald-200">
+                Active Monitoring
+              </span>
             </div>
+
           </div>
 
-          {/* Main Content */}
-          <div className="max-w-4xl">
-            <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-4xl lg:text-6xl font-black text-white leading-none">
-                {data?.total_cattle}
-              </h1>
+          {/* Bottom Content */}
+          <div className="max-w-3xl">
+            <h1 className="text-3xl lg:text-5xl font-black text-white leading-tight tracking-tight mb-4">
+              Gir Cattle
+              <span className="block bg-gradient-to-r from-orange-200 via-orange-300 to-yellow-200 bg-clip-text text-transparent">
+                Management System
+              </span>
+            </h1>
 
-              <div className="h-12 w-[2px] bg-white/20" />
-
-              <div>
-                <p className="text-white text-lg lg:text-2xl font-semibold">
-                  Total Cattle
-                </p>
-                <p className="text-orange-200 text-sm tracking-wide">
-                  Gir Cattle Management System
-                </p>
-              </div>
-            </div>
-
-            <p className="text-white/75 text-sm lg:text-base leading-relaxed max-w-2xl">
-              Currently managing{" "}
-              <span className="text-white font-semibold">{data?.all_cattle_data} active cattle</span>{" "}
-              across multiple generations with real-time monitoring of health,
-              milk production, breeding, and lineage tracking.
+            <p className="text-sm lg:text-base leading-relaxed text-white/70 max-w-2xl">
+              Monitoring{" "}
+              <span className="text-white font-semibold">201 active cattle</span>{" "}
+              while maintaining lifecycle records for{" "}
+              <span className="text-orange-300 font-semibold">
+                404 total registered cattle
+              </span>
+              , including health tracking, breeding analytics, and milk production management.
             </p>
+
           </div>
         </div>
       </div>
