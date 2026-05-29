@@ -2,42 +2,44 @@
 
 :root {
   --font-size: 16px;
-  --background: #FFFDF8;
-  --foreground: #1a1a2e;
-  --card: #ffffff;
-  --card-foreground: #1a1a2e;
-  --popover: #ffffff;
-  --popover-foreground: #1a1a2e;
+
+  /* Light - warm cream & saffron */
+  --background: #FFFBF5;
+  --foreground: #1A1A2E;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A2E;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A2E;
   --primary: #FF6B00;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #FFFFFF;
   --secondary: #1B3A6B;
-  --secondary-foreground: #ffffff;
-  --muted: #FFF3E6;
-  --muted-foreground: #6B5A4E;
-  --accent: #E8F0FE;
+  --secondary-foreground: #FFFFFF;
+  --muted: #FFF5EB;
+  --muted-foreground: #7A6A5E;
+  --accent: #F0E6D8;
   --accent-foreground: #1B3A6B;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(255, 107, 0, 0.15);
+  --destructive: #D4183D;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255, 107, 0, 0.12);
   --input: transparent;
   --input-background: #FFF8F0;
-  --switch-background: #cbced4;
+  --switch-background: #CBCED4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: #FF6B00;
   --chart-1: #FF6B00;
   --chart-2: #1B3A6B;
-  --chart-3: #28a745;
+  --chart-3: #28A745;
   --chart-4: #FFC107;
-  --chart-5: #6f42c1;
-  --radius: 0.625rem;
-  --sidebar: #1B3A6B;
-  --sidebar-foreground: #ffffff;
+  --chart-5: #6F42C1;
+  --radius: 0.75rem;
+  --sidebar: #0F2340;
+  --sidebar-foreground: #FFFFFF;
   --sidebar-primary: #FF6B00;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #243F6B;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #FF6B00;
   --saffron: #FF6B00;
   --saffron-light: #FF9933;
@@ -48,40 +50,44 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --background: #0F1A2E;
+  --foreground: #F0EBE5;
+  --card: #162240;
+  --card-foreground: #F0EBE5;
+  --popover: #162240;
+  --popover-foreground: #F0EBE5;
+  --primary: #FF9933;
+  --primary-foreground: #0F1A2E;
+  --secondary: #2A4F8F;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1A2A45;
+  --muted-foreground: #A09080;
+  --accent: #1A2A45;
+  --accent-foreground: #FF9933;
+  --destructive: #D4183D;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255, 153, 51, 0.12);
+  --input: rgba(255, 153, 51, 0.15);
+  --ring: #FF9933;
+  --chart-1: #FF9933;
+  --chart-2: #2A4F8F;
+  --chart-3: #34D399;
+  --chart-4: #FBBF24;
+  --chart-5: #A78BFA;
+  --sidebar: #09162B;
+  --sidebar-foreground: #F0EBE5;
+  --sidebar-primary: #FF9933;
+  --sidebar-primary-foreground: #09162B;
+  --sidebar-accent: rgba(255, 153, 51, 0.1);
+  --sidebar-accent-foreground: #FF9933;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #FF9933;
+  --saffron: #FF9933;
+  --saffron-light: #FFB366;
+  --saffron-dark: #E67A00;
+  --navy: #2A4F8F;
+  --navy-light: #3A6FBF;
+  --navy-dark: #0F1A2E;
 }
 
 @theme inline {
@@ -134,19 +140,16 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   }
 
   body {
     @apply bg-background text-foreground;
   }
 
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
   html {
     font-size: var(--font-size);
+    scroll-behavior: smooth;
   }
 
   h1 {
@@ -192,17 +195,27 @@
   }
 }
 
-/* Custom scrollbar for CowCard content area (WebKit browsers) */
-.overflow-y-auto::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 5px;
 }
-.overflow-y-auto::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
-.overflow-y-auto::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: rgba(255, 107, 0, 0.2);
   border-radius: 9999px;
 }
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 107, 0, 0.35);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 153, 51, 0.25);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 51, 0.4);
+}
+
+/* Dark mode: card surfaces adapt */
+.dark .bg-white {
+  background-color: var(--card);
 }

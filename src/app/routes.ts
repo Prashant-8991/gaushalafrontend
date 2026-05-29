@@ -25,7 +25,7 @@ export const router = createBrowserRouter([
           { index: true, Component: Dashboard },
           { path: "list-cattle/:type", Component: AllCattle },
           { path: "genealogy", Component: Genealogy },
-          { path: "breed-scoring", Component: BreedScoring },
+          // { path: "breed-scoring", Component: BreedScoring },
           { path: "timeline", Component: Timeline },
           { path: "alerts", Component: Alerts },
           // { path: "memorial", Component: Memorial },

@@ -33,5 +33,8 @@ export interface DashboardApiResponse {
     month_wise_milk_production: {
         month: string | null;
         total_milk: number | null;
-    }[]
+    }[],
+    average_milk_by_per_cattle: {
+        average_milk_by_per_cattle: number;
+    }
 }

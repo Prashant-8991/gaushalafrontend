@@ -501,7 +501,7 @@ export function Genealogy() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 border-t border-saffron/10 bg-muted/10">
+          {/* <div className="flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 border-t border-saffron/10 bg-muted/10">
             {[
               { color: "bg-green-400", label: "Milking" },
               { color: "bg-pink-400", label: "Pregnant" },
@@ -527,7 +527,7 @@ export function Genealogy() {
               <div className="w-2.5 h-2.5 rounded border-2 border-navy" />
               <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Male</span>
             </div>
-          </div>
+          </div> */}
         </div>
       )}
 

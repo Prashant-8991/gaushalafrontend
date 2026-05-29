@@ -438,10 +438,8 @@ export function Dashboard() {
           </div>
           <div className="p-4 space-y-2">
             {[
-              { icon: <Droplets className="w-3.5 h-3.5 text-saffron" />, l: "Avg Milk/Cow", v: `${kpiData.avgMilkPerCow}L/day` },
-              { icon: <Shield className="w-3.5 h-3.5 text-green-500" />, l: "Top Breed Score", v: `${topBreed[0]?.totalBreedScore}/10` },
-              { icon: <Flower2 className="w-3.5 h-3.5 text-navy" />, l: "Dry Cows", v: kpiData.dryCows },
-              { icon: <Heart className="w-3.5 h-3.5 text-pink-500" />, l: "Healthy", v: kpiData.healthyCows },
+              { icon: <Droplets className="w-3.5 h-3.5 text-saffron" />, l: "Avg Milk/Cow", v: `${data?.average_milk_by_per_cattle.average_milk_by_per_cattle}L/day` },
+              { icon: <Shield className="w-3.5 h-3.5 text-green-500" />, l: "Top Breed Score", v: `${data?.top_10_fit_cattle[0].total_score}/10` },
             ].map(s => (
               <div key={s.l} className="flex items-center justify-between py-1 border-b border-saffron/5 last:border-0">
                 <div className="flex items-center gap-2">
@@ -455,101 +453,190 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-saffron/10 p-5">
-          <h3 className="mb-3 flex items-center gap-2">
-            <Droplets className="w-4 h-4 text-saffron" /> Top Milking Cows
-          </h3>
-          <div className="space-y-2">
-            {/* {topMilkers.map((cow, i) => (
-              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="relative">
-                  <ImageWithFallback src={cow.image} alt={cow.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-saffron/30" />
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-saffron text-white flex items-center justify-center"
-                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tagNumber} &bull; Gen {cow.generation}</p>
-                </div>
-                <div className="text-right">
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-saffron">{cow.dailyMilk}L</p>
-                  <p style={{ fontSize: '0.6rem' }} className="text-muted-foreground">per day</p>
-                </div>
-              </div>
-            ))} */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
+        {/* Top Milking Cows */}
+        <div className="overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-lg shadow-orange-100/50">
+          <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-white">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+                <Droplets className="w-5 h-5" />
+              </div>
+
+              <div>
+                <h3 className="font-bold text-lg">Top Milking Cows</h3>
+                <p className="text-xs text-orange-100">
+                  Highest milk production leaderboard
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-3">
             {data?.top_10_milking_cattle.map((cow, i) => (
-              <div key={cow.id ?? i} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+              <div
+                key={cow.id ?? i}
+                onClick={() => setSelectedCow(cow)}
+                className="
+            group
+            flex items-center gap-4
+            rounded-2xl
+            border border-gray-100
+            bg-gradient-to-r from-white to-orange-50/40
+            p-4
+            cursor-pointer
+            hover:shadow-xl
+            hover:-translate-y-1
+            transition-all duration-300
+          "
+              >
+                {/* Rank */}
                 <div className="relative">
-                  {/* <ImageWithFallback src={cow.image} alt={cow.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-saffron/30" />
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-saffron text-white flex items-center justify-center"
-                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div> */}
-                  <div>
-                    <SiHappycow size={40} />
+                  <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
+                    <SiHappycow size={32} className="text-orange-600" />
+                  </div>
+
+                  <div className="
+              absolute -top-2 -right-2
+              w-6 h-6 rounded-full
+              bg-gradient-to-r from-orange-500 to-amber-500
+              text-white text-xs font-bold
+              flex items-center justify-center
+              shadow-lg
+            ">
+                    {i + 1}
                   </div>
                 </div>
+
                 <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tagNumber} &bull; Gen {cow.generation}</p>
+                  <h4 className="font-semibold truncate">
+                    {cow.name}
+                  </h4>
+
+                  <p className="text-xs text-muted-foreground">
+                    #{cow.tagNumber} • Gen {cow.generation}
+                  </p>
                 </div>
+
                 <div className="text-right">
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-saffron">{cow.total_milk} L</p>
-                  <p style={{ fontSize: '0.6rem' }} className="text-muted-foreground">per day</p>
+                  <div className="
+              px-3 py-1
+              rounded-full
+              bg-orange-100
+              text-orange-700
+              font-bold
+              text-sm
+            ">
+                    {cow.total_milk} L
+                  </div>
+
+                  <p className="text-[10px] mt-1 text-muted-foreground">
+                    Total Milk
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-saffron/10 p-5">
-          <h3 className="mb-3 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-navy" /> Top Breed Scores
-          </h3>
-          <div className="space-y-2">
-            {/* {topBreed.map((cow, i) => (
-              <div key={cow.id} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors">
-                <div className="relative">
-                  <ImageWithFallback src={cow.image} alt={cow.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-navy/30" />
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-navy text-white flex items-center justify-center"
-                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tagNumber} &bull; {cow.status}</p>
-                </div>
-                <div className="text-right">
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-navy">{cow.totalBreedScore}</p>
-                  <div className="w-16 h-1.5 rounded-full bg-gray-200 mt-1">
-                    <div className="h-full rounded-full bg-gradient-to-r from-navy to-saffron"
-                      style={{ width: `${cow.totalBreedScore * 10}%` }} />
-                  </div>
-                </div>
+        {/* Top Breed Scores */}
+        <div className="overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-lg shadow-blue-100/50">
+          <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-5 text-white">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+                <Shield className="w-5 h-5" />
               </div>
-            ))} */}
 
+              <div>
+                <h3 className="font-bold text-lg">
+                  Top Breed Scores
+                </h3>
+
+                <p className="text-xs text-blue-100">
+                  Highest breed fitness ranking
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-3">
             {data?.top_10_fit_cattle.map((cow, i) => (
-              <div key={cow.id ?? i} onClick={() => setSelectedCow(cow)} className="flex items-center gap-3 p-2 rounded-lg bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors">
+              <div
+                key={cow.id ?? i}
+                onClick={() => setSelectedCow(cow)}
+                className="
+            group
+            flex items-center gap-4
+            rounded-2xl
+            border border-gray-100
+            bg-gradient-to-r from-white to-blue-50/40
+            p-4
+            cursor-pointer
+            hover:shadow-xl
+            hover:-translate-y-1
+            transition-all duration-300
+          "
+              >
                 <div className="relative">
-                  <div>
-                    <SiHappycow size={40} />
+                  <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center">
+                    <SiHappycow size={32} className="text-blue-700" />
                   </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-navy text-white flex items-center justify-center"
-                    style={{ fontSize: '0.55rem', fontWeight: 700 }}>{i + 1}</div>
+
+                  <div className="
+              absolute -top-2 -right-2
+              w-6 h-6 rounded-full
+              bg-gradient-to-r from-blue-700 to-indigo-700
+              text-white text-xs font-bold
+              flex items-center justify-center
+              shadow-lg
+            ">
+                    {i + 1}
+                  </div>
                 </div>
+
                 <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: '0.8rem', fontWeight: 500 }} className="truncate">{cow.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{cow.tag_number}  &bull;  Gen {cow.generation}</p>
-                </div>
-                <div className="text-right">
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-navy">{cow.total_score}</p>
-                  <div className="w-16 h-1.5 rounded-full bg-gray-200 mt-1">
-                    <div className="h-full rounded-full bg-gradient-to-r from-navy to-saffron"
-                      style={{ width: `${cow.total_score * 0.5}%` }} />
+                  <h4 className="font-semibold truncate">
+                    {cow.name}
+                  </h4>
+
+                  <p className="text-xs text-muted-foreground">
+                    #{cow.tag_number} • Gen {cow.generation}
+                  </p>
+
+                  <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="
+                  h-full rounded-full
+                  bg-gradient-to-r
+                  from-blue-600
+                  via-indigo-500
+                  to-orange-400
+                "
+                      style={{
+                        width: `${(cow.total_score / 10) * 100}%`,
+                      }}
+                    />
                   </div>
+                </div>
+
+                <div className="
+            w-14 h-14 rounded-full
+            bg-gradient-to-br
+            from-blue-700
+            to-indigo-700
+            text-white
+            flex flex-col
+            items-center
+            justify-center
+            shadow-lg
+          ">
+                  <span className="font-bold text-lg leading-none">
+                    {Number(cow.total_score).toFixed(2)}
+                  </span>
+
+                  <span className="text-[9px] opacity-80">
+                    /10
+                  </span>
                 </div>
               </div>
             ))}
