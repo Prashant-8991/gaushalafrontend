@@ -3,10 +3,11 @@ import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft, Search, Mic, MicOff, Loader2, AlertTriangle,
-  SlidersHorizontal, X,
+  SlidersHorizontal, X, CalendarDays,
 } from "lucide-react";
 import { SiHappycow } from "react-icons/si";
 import { CowCard } from "./CowCard";
+import { CattleMilkCalendar } from "./CattleMilkCalendar";
 import { Cow } from "../data/mockData";
 
 /* ─── Types ─── */
@@ -83,6 +84,8 @@ export function AllCattle() {
   const [search, setSearch] = useState("");
   const [listening, setListening] = useState(false);
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
+  const [calendarTag, setCalendarTag] = useState<string | null>(null);
+  const [calendarName, setCalendarName] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   /* Filter state */
@@ -503,6 +506,15 @@ export function AllCattle() {
                     )}
                   </div>
                 </div>
+                {type === "milking" && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCalendarTag(c.tag_number); setCalendarName(c.name); }}
+                    className="shrink-0 w-7 h-7 rounded-lg bg-saffron/10 hover:bg-saffron/20 border border-saffron/20 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                    title="View milk calendar"
+                  >
+                    <CalendarDays className="w-3.5 h-3.5 text-saffron" />
+                  </button>
+                )}
               </div>
             </motion.button>
           ))}
@@ -512,6 +524,17 @@ export function AllCattle() {
       {/* CowCard */}
       <AnimatePresence>
         {selectedCow && <CowCard cow={selectedCow} onClose={() => setSelectedCow(null)} />}
+      </AnimatePresence>
+
+      {/* Milk Calendar */}
+      <AnimatePresence>
+        {calendarTag && (
+          <CattleMilkCalendar
+            tagNumber={calendarTag}
+            cattleName={calendarName}
+            onClose={() => setCalendarTag(null)}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
