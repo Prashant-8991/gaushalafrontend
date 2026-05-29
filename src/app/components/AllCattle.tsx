@@ -468,7 +468,7 @@ export function AllCattle() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
-              onClick={() => handleSelect(c)}
+              onClick={() => type === "milking" ? (setCalendarTag(c.tag_number), setCalendarName(c.name)) : handleSelect(c)}
               className="group bg-white dark:bg-navy rounded-xl border border-saffron/10 p-4 text-left hover:shadow-lg hover:shadow-saffron/5 hover:border-saffron/30 hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="flex items-center gap-3">

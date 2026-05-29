@@ -1,91 +1,80 @@
 import { useMemo } from "react";
 import { MilkCalendarCell } from "./MilkCalendarCell";
-import type { CattleMilkRecord } from "../hooks/useCattleMilk";
+import type { MilkMap } from "../types/milk";
 
 const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+interface CalendarDay {
+  day: number;
+  dateStr: string;
+  isToday: boolean;
+  isCurrentMonth: boolean;
+}
 
 interface MilkCalendarGridProps {
   year: number;
   month: number;
-  data: CattleMilkRecord[] | undefined;
+  milkMap: MilkMap;
+  editValues: Record<string, string>;
+  savingDates: Set<string>;
+  onCellChange: (dateStr: string, value: string) => void;
+  onCellBlur: (dateStr: string) => void;
   isLoading: boolean;
 }
 
-export function MilkCalendarGrid({ year, month, data, isLoading }: MilkCalendarGridProps) {
-  const milkMap = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!data) return map;
-    for (const record of data) {
-      map.set(record.date, record.milk);
-    }
-    return map;
-  }, [data]);
+function buildCalendarDays(year: number, month: number): CalendarDay[] {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startWeekday = firstDay.getDay();
+  const totalSlots = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const days: CalendarDay[] = [];
 
-  const calendarDays = useMemo(() => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startWeekday = firstDay.getDay();
-    const totalSlots = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+  const prevLastDay = new Date(year, month, 0).getDate();
+  for (let i = startWeekday - 1; i >= 0; i--) {
+    const d = prevLastDay - i;
+    days.push({ day: d, dateStr: "", isToday: false, isCurrentMonth: false });
+  }
 
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+    days.push({
+      day: d,
+      dateStr,
+      isToday: dateStr === `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`,
+      isCurrentMonth: true,
+    });
+  }
 
-    const days: Array<{
-      day: number;
-      milk: number | null;
-      isToday: boolean;
-      isCurrentMonth: boolean;
-      key: string;
-    }> = [];
+  const remaining = totalSlots - days.length;
+  for (let d = 1; d <= remaining; d++) {
+    days.push({ day: d, dateStr: "", isToday: false, isCurrentMonth: false });
+  }
 
-    // Previous month fill
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = startWeekday - 1; i >= 0; i--) {
-      const d = prevMonthLastDay - i;
-      days.push({
-        day: d,
-        milk: null,
-        isToday: false,
-        isCurrentMonth: false,
-        key: `prev-${d}`,
-      });
-    }
+  return days;
+}
 
-    // Current month
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      days.push({
-        day: d,
-        milk: milkMap.get(dateStr) ?? null,
-        isToday: dateStr === todayStr,
-        isCurrentMonth: true,
-        key: dateStr,
-      });
-    }
-
-    // Next month fill
-    const remaining = totalSlots - days.length;
-    for (let d = 1; d <= remaining; d++) {
-      days.push({
-        day: d,
-        milk: null,
-        isToday: false,
-        isCurrentMonth: false,
-        key: `next-${d}`,
-      });
-    }
-
-    return days;
-  }, [year, month, milkMap]);
+export function MilkCalendarGrid({
+  year,
+  month,
+  milkMap,
+  editValues,
+  savingDates,
+  onCellChange,
+  onCellBlur,
+  isLoading,
+}: MilkCalendarGridProps) {
+  const calendarDays = useMemo(() => buildCalendarDays(year, month), [year, month]);
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-7 gap-1.5">
         {Array.from({ length: 35 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border bg-muted/20 min-h-[72px] animate-pulse p-2.5">
+          <div key={i} className="rounded-xl border border-border bg-muted/20 min-h-[80px] animate-pulse p-2">
             <div className="h-3 w-6 rounded bg-muted/50 mb-2" />
-            <div className="h-4 w-10 rounded bg-muted/50" />
+            <div className="h-6 w-full rounded bg-muted/50" />
           </div>
         ))}
       </div>
@@ -94,26 +83,36 @@ export function MilkCalendarGrid({ year, month, data, isLoading }: MilkCalendarG
 
   return (
     <div>
-      {/* Day headers */}
       <div className="grid grid-cols-7 gap-1.5 mb-1.5">
         {DAY_HEADERS.map((h) => (
-          <div key={h} className="text-center text-[0.6rem] font-semibold uppercase tracking-wider text-muted-foreground/60 py-1">
+          <div
+            key={h}
+            className="text-center text-[0.55rem] font-semibold uppercase tracking-widest text-muted-foreground/50 py-1"
+          >
             {h}
           </div>
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1.5">
-        {calendarDays.map((d) => (
-          <MilkCalendarCell
-            key={d.key}
-            day={d.day}
-            milk={d.milk}
-            isToday={d.isToday}
-            isCurrentMonth={d.isCurrentMonth}
-          />
-        ))}
+        {calendarDays.map((d) => {
+          if (!d.isCurrentMonth) {
+            return <div key={d.dateStr || `empty-${d.day}`} className="min-h-[80px]" />;
+          }
+          return (
+            <MilkCalendarCell
+              key={d.dateStr}
+              day={d.day}
+              dateStr={d.dateStr}
+              value={editValues[d.dateStr] ?? ""}
+              isToday={d.isToday}
+              hasData={d.dateStr in milkMap}
+              isSaving={savingDates.has(d.dateStr)}
+              onChange={onCellChange}
+              onBlur={onCellBlur}
+            />
+          );
+        })}
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import {
   UserCog,
   LogOut,
 } from "lucide-react";
+import { Toaster } from "./ui/sonner";
 import { CardThemeProvider, useCardTheme } from "./CardThemeContext";
 import { useAuth } from "../auth/AuthContext";
 
@@ -215,6 +216,7 @@ function LayoutInner() {
           <Outlet />
         </main>
       </div>
+      <Toaster richColors closeButton />
     </div>
   );
 }
