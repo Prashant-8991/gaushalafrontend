@@ -3,11 +3,11 @@ import { AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router";
 import {
   Flower2, Droplets, Heart, AlertTriangle, TrendingUp, Users,
-  Activity, Scale, Baby, Milk, Shield,
+  Activity, Scale, Baby, Milk, Shield, Maximize2, X,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
+  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine,
 } from "recharts";
 import { kpiData, heroImage, herdImage, cows, Cow } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -74,6 +74,12 @@ export function Dashboard() {
 
 
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
+  const [fsChart, setFsChart] = useState(false);
+
+  const milkMonthly = data?.month_wise_milk_production || [];
+  const milkAvg = milkMonthly.length
+    ? +(milkMonthly.reduce((s: number, m: any) => s + (m.total_milk || 0), 0) / milkMonthly.length).toFixed(0)
+    : null;
 
   const topMilkers = cows
     .filter(c => c.dailyMilk > 0)
@@ -202,12 +208,14 @@ export function Dashboard() {
             <h3 className="text-lg font-bold text-slate-800">
               Monthly Milk Production (Liters)
             </h3>
+            <button onClick={() => setFsChart(true)} className="ml-auto p-1.5 rounded-lg hover:bg-orange-50 transition-colors" title="Full Screen"><Maximize2 className="w-4 h-4 text-saffron/50 hover:text-saffron" /></button>
           </div>
 
-          {/* Increased height from 200 to 380 for better interaction */}
+          {milkAvg != null && <p className="text-xs text-slate-400 -mt-4 mb-4">Average: <span className="font-semibold text-navy">{milkAvg} L</span></p>}
+
           <ResponsiveContainer width="100%" height={380}>
             <AreaChart
-              data={data?.month_wise_milk_production || []}
+              data={milkMonthly}
               margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
             >
               <defs>
@@ -242,6 +250,7 @@ export function Dashboard() {
                   backgroundColor: "rgba(255, 255, 255, 0.95)"
                 }}
               />
+              {milkAvg != null && <ReferenceLine y={milkAvg} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${milkAvg} L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 11 }} />}
               <Area
                 type="monotone"
                 dataKey="total_milk"
@@ -649,6 +658,37 @@ export function Dashboard() {
           <CowCard cow={selectedCow} onClose={() => setSelectedCow(null)} onSelectCow={setSelectedCow} />
         )}
       </AnimatePresence>
+
+      {fsChart && (
+        <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col" onClick={() => setFsChart(false)}>
+          <div className="flex items-center justify-between px-6 py-4 shrink-0">
+            <h2 className="text-white text-lg font-bold">Herd Monthly Milk Production (Liters)</h2>
+            <button onClick={() => setFsChart(false)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5 text-white" /></button>
+          </div>
+          <div className="flex-1 p-6" onClick={e => e.stopPropagation()}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={milkMonthly} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                <defs>
+                  <linearGradient id="fsMilkG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.5} />
+                    <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} angle={-45} axisLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", fontSize: "13px" }} labelStyle={{ color: "#fff" }} />
+                {milkAvg != null && <ReferenceLine y={milkAvg} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Average ${milkAvg} L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 13, fontWeight: "bold" }} />}
+                <Area type="monotone" dataKey="total_milk" stroke="#FF6B00" strokeWidth={3} fill="url(#fsMilkG)" dot={{ r: 3, fill: "#FF6B00" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
+            <div className="flex items-center gap-2"><div className="w-4 h-1 rounded" style={{ backgroundColor: "#FF6B00" }} /><span className="text-white/70 text-sm">Total Milk Per Month</span></div>
+            {milkAvg != null && <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded" style={{ backgroundColor: "#1B3A6B", border: "1px dashed #1B3A6B" }} /><span className="text-white/70 text-sm">Average ({milkAvg} L)</span></div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

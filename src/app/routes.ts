@@ -8,6 +8,7 @@ import { Alerts } from "./components/Alerts";
 import { BreedScoring } from "./components/BreedScoring";
 // import { Memorial } from "./components/Memorial";
 import { Donations } from "./components/Donations";
+import { CattleProfile } from "./components/CattleProfile";
 import { AdminHerd } from "./components/AdminHerd";
 import { AdminUsers } from "./components/AdminUsers";
 import { Login } from "./components/Login";
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
           { path: "alerts", Component: Alerts },
           // { path: "memorial", Component: Memorial },
           { path: "donations", Component: Donations },
+          { path: "cattle/:tagNumber", Component: CattleProfile },
           { path: "admin/herd", Component: AdminHerd },
           { path: "admin/users", Component: AdminUsers },
         ],
