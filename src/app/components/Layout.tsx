@@ -17,6 +17,7 @@ import {
   UserCog,
   LogOut,
   PlusCircle,
+  Droplets,
 } from "lucide-react";
 import { Toaster } from "./ui/sonner";
 import { CardThemeProvider, useCardTheme } from "./CardThemeContext";
@@ -34,6 +35,7 @@ const navItems = [
 const adminNavItems = [
   { to: "/admin/herd", icon: ClipboardList, label: "Herd Management" },
   { to: "/admin/register", icon: PlusCircle, label: "Register Cattle" },
+  { to: "/admin/daily", icon: Droplets, label: "Daily Operations" },
   { to: "/admin/users", icon: UserCog, label: "User Management" },
 ];
 

@@ -12,6 +12,8 @@ import { CattleProfile } from "./components/CattleProfile";
 import { AdminHerd } from "./components/AdminHerd";
 import { AdminUsers } from "./components/AdminUsers";
 import { RegisterCattle } from "./components/RegisterCattle";
+import { EditCattle } from "./components/EditCattle";
+import { DailyOps } from "./components/DailyOps";
 import { Login } from "./components/Login";
 import { RequireAuth } from "./components/RequireAuth";
 
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
           { path: "cattle/:tagNumber", Component: CattleProfile },
           { path: "admin/herd", Component: AdminHerd },
           { path: "admin/register", Component: RegisterCattle },
+          { path: "admin/edit/:tagNumber", Component: EditCattle },
+          { path: "admin/daily", Component: DailyOps },
           { path: "admin/users", Component: AdminUsers },
         ],
       },

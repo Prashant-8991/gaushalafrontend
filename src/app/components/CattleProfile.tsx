@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X, Pencil,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid } from "recharts";
 
@@ -82,7 +82,10 @@ export function CattleProfile() {
           <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-muted transition-colors"><ArrowLeft className="w-5 h-5" /></button>
           <div><h1 className="flex items-center gap-2 text-xl font-bold"><Flower2 className="w-5 h-5 text-saffron" />{ov?.name || tag}</h1><p className="text-sm text-muted-foreground">{ov?.tag_number} &bull; Gen {ov?.generation || "?"} &bull; {ov?.age || "—"}</p></div>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-saffron to-saffron-dark text-white text-sm hover:opacity-90"><Printer className="w-4 h-4" /> Print / PDF</button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(`/admin/edit/${encodeURIComponent(tag)}`)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-saffron/20 text-saffron text-sm hover:bg-saffron/5 transition-colors no-print"><Pencil className="w-4 h-4" /> Edit</button>
+          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-saffron to-saffron-dark text-white text-sm hover:opacity-90"><Printer className="w-4 h-4" /> Print / PDF</button>
+        </div>
       </div>
 
       {/* Hero Card */}
