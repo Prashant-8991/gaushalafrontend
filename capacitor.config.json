@@ -1,0 +1,9 @@
+{
+  "appId": "com.cattlemanagement.org",
+  "appName": "cattlemanagement",
+  "webDir": "dist",
+  "server": {
+    "url": "http://10.83.29.77:5173",
+    "cleartext": true
+  }
+}

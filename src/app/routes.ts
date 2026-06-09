@@ -11,6 +11,7 @@ import { Donations } from "./components/Donations";
 import { CattleProfile } from "./components/CattleProfile";
 import { AdminHerd } from "./components/AdminHerd";
 import { AdminUsers } from "./components/AdminUsers";
+import { RegisterCattle } from "./components/RegisterCattle";
 import { Login } from "./components/Login";
 import { RequireAuth } from "./components/RequireAuth";
 
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { path: "donations", Component: Donations },
           { path: "cattle/:tagNumber", Component: CattleProfile },
           { path: "admin/herd", Component: AdminHerd },
+          { path: "admin/register", Component: RegisterCattle },
           { path: "admin/users", Component: AdminUsers },
         ],
       },
