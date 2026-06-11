@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
+import { motion } from "motion/react";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X, Pencil,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ArrowRight, ArrowDownRight, Circle, Maximize2, X, Pencil,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid } from "recharts";
+import { CowIcon } from "./icons/icons";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
 interface ParentInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -69,232 +71,354 @@ export function CattleProfile() {
     return () => { c = true; };
   }, [tag]);
 
-  if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-10 h-10 text-saffron animate-spin" /><span className="ml-3 text-muted-foreground">Loading...</span></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-5 h-5 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+        <span className="text-muted-foreground text-[0.85rem]">Loading…</span>
+      </div>
+    </div>
+  );
+
   if (fetchError) return (
-    <div className="flex items-center justify-center min-h-[60vh]"><div className="text-center max-w-md"><AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" /><h3 className="text-lg font-bold">Not Found</h3><p className="text-sm text-muted-foreground">{fetchError}</p><button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-saffron text-white rounded-lg text-sm">Go Back</button></div></div>
+    <div className="flex items-center justify-center min-h-[60vh] p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        className="surface p-8 text-center max-w-md"
+      >
+        <AlertTriangle className="w-8 h-8 text-destructive/70 mx-auto mb-3" />
+        <p className="font-medium">Not found</p>
+        <p className="text-sm text-muted-foreground mt-1">{fetchError}</p>
+        <button onClick={() => navigate(-1)} className="mt-4 h-9 px-4 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90">Go back</button>
+      </motion.div>
+    </div>
   );
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-5xl mx-auto" id="cattle-profile-print">
-      {/* Header with Back + Print */}
-      <div className="flex items-center justify-between no-print">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-muted transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-          <div><h1 className="flex items-center gap-2 text-xl font-bold"><Flower2 className="w-5 h-5 text-saffron" />{ov?.name || tag}</h1><p className="text-sm text-muted-foreground">{ov?.tag_number} &bull; Gen {ov?.generation || "?"} &bull; {ov?.age || "—"}</p></div>
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-5" id="cattle-profile-print">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center justify-between gap-3 no-print"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button onClick={() => navigate(-1)} className="h-8 w-8 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors shrink-0">
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em] flex items-center gap-2 truncate">
+              <Flower2 className="w-5 h-5 text-saffron shrink-0" strokeWidth={1.6} />
+              {ov?.name || tag}
+            </h1>
+            <p className="text-[0.82rem] text-muted-foreground tabular">
+              {ov?.tag_number} · Gen {ov?.generation || "?"} · {ov?.age || "—"}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(`/admin/edit/${encodeURIComponent(tag)}`)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-saffron/20 text-saffron text-sm hover:bg-saffron/5 transition-colors no-print"><Pencil className="w-4 h-4" /> Edit</button>
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-saffron to-saffron-dark text-white text-sm hover:opacity-90"><Printer className="w-4 h-4" /> Print / PDF</button>
+          <button
+            onClick={() => navigate(`/admin/edit/${encodeURIComponent(tag)}`)}
+            className="h-8 px-3 rounded-md border border-border text-foreground text-[0.82rem] font-medium hover:bg-muted transition-colors inline-flex items-center gap-1.5 no-print"
+          >
+            <Pencil className="w-3 h-3" /> Edit
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="h-8 px-3 rounded-md bg-foreground text-background text-[0.82rem] font-medium hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+          >
+            <Printer className="w-3 h-3" /> Print
+          </button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Hero Card */}
-      <div className="bg-white rounded-2xl border border-saffron/10 overflow-hidden shadow-sm">
-        <div className="bg-gradient-to-br from-saffron/5 to-navy/5 p-6">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-saffron/20 to-navy/20 flex items-center justify-center text-4xl font-bold text-saffron border-4 border-saffron/30 shrink-0">{(ov?.name || "?").charAt(0).toUpperCase()}</div>
-            <div className="flex-1">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.05 }}
+        className="surface overflow-hidden"
+      >
+        <div className="bg-gradient-to-br from-saffron/[0.06] to-navy/[0.04] p-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-saffron/20 to-navy/20 flex items-center justify-center text-2xl font-semibold text-saffron ring-1 ring-saffron/30 shrink-0">
+              {(ov?.name || "?").charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-2xl font-bold">{ov?.name || tag}</h2>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${ov?.is_present === 1 ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>{ov?.is_present === 1 ? "Present" : "Not Present"}</span>
-                {ov?.lactation_cycle && <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs">{ov.lactation_cycle}</span>}
+                <h2 className="text-[1.35rem] font-semibold text-foreground leading-tight">{ov?.name || tag}</h2>
+                <span className={`chip text-[0.65rem] ${
+                  ov?.is_present === 1
+                    ? "bg-success/10 text-success border-success/20"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}>
+                  {ov?.is_present === 1 ? "Present" : "Not present"}
+                </span>
+                {ov?.lactation_cycle && (
+                  <span className="chip chip-info text-[0.65rem]">{ov.lactation_cycle}</span>
+                )}
               </div>
-              <p className="text-muted-foreground text-sm mt-1">{ov?.tag_number} &bull; {ov?.acquisition_type || "—"} &bull; Born: {formatDate(ov?.DOB ?? null)}</p>
+              <p className="text-muted-foreground text-[0.82rem] mt-1 tabular">
+                {ov?.tag_number} · {ov?.acquisition_type || "—"} · Born {formatDate(ov?.DOB ?? null)}
+              </p>
             </div>
             {ov?.physical_score != null && (
-              <div className="text-center shrink-0"><div className="w-20 h-20 rounded-2xl bg-gradient-to-b from-saffron to-saffron-dark flex flex-col items-center justify-center shadow-lg"><span className="text-2xl font-bold text-white">{ov.physical_score}</span><span className="text-[0.5rem] text-white/80 uppercase">Score</span></div></div>
+              <div className="text-center shrink-0 hidden sm:block">
+                <div className="px-3 py-2 rounded-lg bg-foreground text-background flex flex-col items-center justify-center min-w-[64px]">
+                  <span className="text-[1.35rem] font-semibold metric leading-none">{ov.physical_score}</span>
+                  <span className="text-[0.55rem] uppercase tracking-wider opacity-70 mt-0.5">Score</span>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* All Sections — no tabs */}
-        <div className="p-6 space-y-8">
-          {/* OVERVIEW */}
-          <Section icon={<Flower2 className="w-4 h-4" />} title="Overview">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Field label="Tag Number" value={ov?.tag_number || "—"} /><Field label="Generation" value={ov?.generation || "—"} />
+        <div className="p-6 space-y-7">
+          <Section icon={<Flower2 className="w-3.5 h-3.5" />} title="Overview">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+              <Field label="Tag" value={ov?.tag_number || "—"} />
+              <Field label="Generation" value={ov?.generation || "—"} />
               <Field label="Acquisition" value={ov?.acquisition_type === "Not available" ? "—" : (ov?.acquisition_type || "—")} />
-              <Field label="Age" value={ov?.age || "—"} /><Field label="Weight at Birth" value={ov?.weight || "—"} />
-              <Field label="Lactation" value={ov?.lactation_cycle || "—"} /><Field label="Last Calving" value={formatDate(ov?.last_calving_date ?? null)} />
-              {isMilking && ov?.average_milk_per_day != null && <Field label="Avg Milk/Day" value={`${ov.average_milk_per_day} L`} />}
-              <Field label="Children" value={String(ov?.total_childrens ?? 0)} /><Field label="Siblings" value={String(ov?.siblings?.length ?? 0)} />
+              <Field label="Age" value={ov?.age || "—"} />
+              <Field label="Weight" value={ov?.weight || "—"} />
+              <Field label="Lactation" value={ov?.lactation_cycle || "—"} />
+              <Field label="Last calving" value={formatDate(ov?.last_calving_date ?? null)} />
+              {isMilking && <Field label="Avg milk / day" value={`${ov?.average_milk_per_day} L`} />}
+              <Field label="Children" value={String(ov?.total_childrens ?? 0)} />
+              <Field label="Siblings" value={String(ov?.siblings?.length ?? 0)} />
             </div>
           </Section>
 
-          {/* MILK */}
-          <Section icon={<Droplets className="w-4 h-4" />} title="Milk Production">
-            {!isMilking ? <p className="text-sm text-muted-foreground">Currently not milking.</p> : <>
-              {milkWithAvg && milkWithAvg.data.length > 0 && (
-                <div className="bg-muted/30 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">Monthly (Avg: <span className="text-saffron font-semibold">{milkWithAvg.average} L</span>)</p>
-                    <button onClick={() => setFullscreenChart("monthly")} className="p-1.5 rounded-lg hover:bg-white/50 transition-colors" title="Full Screen"><Maximize2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          <Section icon={<Droplets className="w-3.5 h-3.5" />} title="Milk production">
+            {!isMilking ? (
+              <p className="text-[0.85rem] text-muted-foreground">Currently not milking.</p>
+            ) : (
+              <>
+                {milkWithAvg && milkWithAvg.data.length > 0 && (
+                  <ChartCard
+                    label={`Monthly · avg ${milkWithAvg.average} L`}
+                    color="saffron"
+                    onFullscreen={() => setFullscreenChart("monthly")}
+                  >
+                    <ResponsiveContainer width="100%" height={160}>
+                      <AreaChart data={milkWithAvg.data} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#DC4F0A" stopOpacity={0.14} />
+                            <stop offset="100%" stopColor="#DC4F0A" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="2 4" vertical={false} />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9 }} angle={-45} dy={4} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} width={32} />
+                        <Tooltip />
+                        <ReferenceLine y={milkWithAvg.average} stroke="#94A3B8" strokeDasharray="4 3" label={{ value: `Avg ${milkWithAvg.average}L`, position: "insideTopRight", fill: "#64748B", fontSize: 9, fontWeight: 500 }} />
+                        <Area type="monotone" dataKey="milk" stroke="#DC4F0A" strokeWidth={2} fill="url(#milkG)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartCard>
+                )}
+                {dailyWithAvg && dailyWithAvg.data.length > 0 && (
+                  <ChartCard
+                    label={`Daily · avg ${dailyWithAvg.average} L`}
+                    color="navy"
+                    onFullscreen={() => setFullscreenChart("daily")}
+                  >
+                    <ResponsiveContainer width="100%" height={160}>
+                      <AreaChart data={dailyWithAvg.data} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="dailyG" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#142E55" stopOpacity={0.14} />
+                            <stop offset="100%" stopColor="#142E55" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="2 4" vertical={false} />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 8 }} tickFormatter={v => v?.slice(5, 10) || ""} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} width={32} />
+                        <Tooltip />
+                        <ReferenceLine y={dailyWithAvg.average} stroke="#DC4F0A" strokeDasharray="4 3" label={{ value: `Avg ${dailyWithAvg.average}L`, position: "insideTopRight", fill: "#DC4F0A", fontSize: 9, fontWeight: 500 }} />
+                        <Area type="monotone" dataKey="milk" stroke="#142E55" strokeWidth={1.5} fill="url(#dailyG)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartCard>
+                )}
+                {ov?.average_milk_per_day != null && (
+                  <div className="bg-saffron/[0.06] border border-saffron/15 rounded-md p-3 text-center">
+                    <p className="eyebrow">Average daily</p>
+                    <p className="text-[1.5rem] font-semibold text-saffron metric mt-1">
+                      {ov.average_milk_per_day} <span className="text-[0.85rem] text-muted-foreground font-normal">L/day</span>
+                    </p>
                   </div>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <AreaChart data={milkWithAvg.data}>
-                      <defs><linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.4} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 9 }} angle={-45} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} axisLine={false} /><Tooltip />
-                      <ReferenceLine y={milkWithAvg.average} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${milkWithAvg.average}L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 10 }} />
-                      <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={2} fill="url(#milkG)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              {dailyWithAvg && dailyWithAvg.data.length > 0 && (
-                <div className="bg-muted/30 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">Daily — Last 30 Days (Avg: <span className="text-navy font-semibold">{dailyWithAvg.average} L</span>)</p>
-                    <button onClick={() => setFullscreenChart("daily")} className="p-1.5 rounded-lg hover:bg-white/50 transition-colors" title="Full Screen"><Maximize2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                  </div>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <AreaChart data={dailyWithAvg.data}>
-                      <defs><linearGradient id="dailyG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#1B3A6B" stopOpacity={0.3} /><stop offset="95%" stopColor="#1B3A6B" stopOpacity={0} /></linearGradient></defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 8 }} axisLine={false} tickFormatter={v => v?.slice(5, 10) || ""} />
-                      <YAxis tick={{ fontSize: 9 }} axisLine={false} /><Tooltip />
-                      <ReferenceLine y={dailyWithAvg.average} stroke="#FF9933" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${dailyWithAvg.average}L`, position: "insideTopRight", fill: "#FF9933", fontSize: 10 }} />
-                      <Area type="monotone" dataKey="milk" stroke="#1B3A6B" strokeWidth={1.5} fill="url(#dailyG)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              {ov?.average_milk_per_day != null && (
-                <div className="bg-saffron/5 rounded-xl p-4 text-center border border-saffron/10"><p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Daily</p><p className="text-2xl font-bold text-saffron">{ov.average_milk_per_day} <span className="text-sm text-muted-foreground">L/day</span></p></div>
-              )}
-            </>}
+                )}
+              </>
+            )}
           </Section>
 
-          {/* WEIGHT */}
-          <Section icon={<Scale className="w-4 h-4" />} title="Weight">
-            <Field label="Weight at Birth" value={ov?.weight || "—"} />
+          <Section icon={<Scale className="w-3.5 h-3.5" />} title="Weight">
+            <Field label="Weight at birth" value={ov?.weight || "—"} />
           </Section>
 
-          {/* FAMILY */}
-          <Section icon={<GitBranch className="w-4 h-4" />} title="Family">
+          <Section icon={<GitBranch className="w-3.5 h-3.5" />} title="Family">
             <div className="space-y-4">
               {(isParentObj(ov?.father) || isParentObj(ov?.mother)) && (
-                <div className="flex justify-center gap-16">
-                  <div className="text-center"><div className="w-16 h-16 rounded-full bg-saffron/20 border-2 border-saffron/40 flex items-center justify-center mx-auto"><span className="text-xl font-bold text-saffron">{isParentObj(ov?.mother) ? (ov!.mother as ParentInfo).name?.[0] || "?" : "?"}</span></div><p className="text-xs mt-1 font-medium">{isParentObj(ov?.mother) ? (ov!.mother as ParentInfo).name || "—" : "—"}</p><p className="text-[0.6rem] text-muted-foreground">Mother</p></div>
-                  <div className="text-center"><div className="w-16 h-16 rounded-full bg-navy/10 border-2 border-navy/30 flex items-center justify-center mx-auto"><span className="text-xl font-bold text-navy">{isParentObj(ov?.father) ? (ov!.father as ParentInfo).name?.[0] || "?" : "?"}</span></div><p className="text-xs mt-1 font-medium">{isParentObj(ov?.father) ? (ov!.father as ParentInfo).name || "—" : "—"}</p><p className="text-[0.6rem] text-muted-foreground">Father</p></div>
+                <div className="flex justify-center gap-12">
+                  {isParentObj(ov?.mother) && <ParentAvatar parent={ov.mother as ParentInfo} label="Mother" color="saffron" />}
+                  {isParentObj(ov?.father) && <ParentAvatar parent={ov.father as ParentInfo} label="Father" color="navy" />}
                 </div>
               )}
               {ov?.childrens && ov.childrens.length > 0 && (
-                <div><p className="text-xs text-muted-foreground mb-1.5">Children ({ov.childrens.length})</p><div className="flex flex-wrap gap-2">{ov.childrens.map(c => (
-                  <button key={c.tag_number} onClick={() => navigate(`/cattle/${c.tag_number}`)} className="flex items-center gap-1.5 bg-muted/30 rounded-lg px-2.5 py-1.5 border border-saffron/10 hover:border-saffron/30 text-xs"><div className="w-5 h-5 rounded-full bg-saffron/20 flex items-center justify-center"><span className="text-[0.5rem] text-saffron font-bold">{c.name?.[0] || "?"}</span></div>{c.name}</button>))}</div></div>
+                <div>
+                  <p className="eyebrow mb-2">Children · {ov.childrens.length}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ov.childrens.map(c => (
+                      <button
+                        key={c.tag_number}
+                        onClick={() => navigate(`/cattle/${c.tag_number}`)}
+                        className="inline-flex items-center gap-1.5 surface-soft hover:bg-background hover:ring-1 hover:ring-saffron/20 px-2.5 py-1 text-[0.8rem] text-foreground transition-all"
+                      >
+                        <span className="w-4 h-4 rounded bg-saffron/15 text-saffron flex items-center justify-center text-[0.6rem] font-semibold">{c.name?.[0] || "?"}</span>
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               {apiData?.family?.siblings && apiData.family.siblings.length > 0 && (
-                <div><p className="text-xs text-muted-foreground mb-1.5">Siblings ({apiData.family.siblings.length})</p><div className="flex flex-wrap gap-2">{apiData.family.siblings.map(s => (
-                  <button key={s.tag_number} onClick={() => navigate(`/cattle/${s.tag_number}`)} className="flex items-center gap-1.5 bg-muted/30 rounded-lg px-2.5 py-1.5 border border-saffron/10 hover:border-saffron/30 text-xs"><div className="w-5 h-5 rounded-full bg-saffron/20 flex items-center justify-center"><span className="text-[0.5rem] text-saffron font-bold">{s.name?.[0] || "?"}</span></div>{s.name}</button>))}</div></div>
+                <div>
+                  <p className="eyebrow mb-2">Siblings · {apiData.family.siblings.length}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {apiData.family.siblings.map(s => (
+                      <button
+                        key={s.tag_number}
+                        onClick={() => navigate(`/cattle/${s.tag_number}`)}
+                        className="inline-flex items-center gap-1.5 surface-soft hover:bg-background hover:ring-1 hover:ring-saffron/20 px-2.5 py-1 text-[0.8rem] text-foreground transition-all"
+                      >
+                        <span className="w-4 h-4 rounded bg-saffron/15 text-saffron flex items-center justify-center text-[0.6rem] font-semibold">{s.name?.[0] || "?"}</span>
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </Section>
 
-          {/* PREGNANCY LOGS — Timeline */}
-          <Section icon={<Heart className="w-4 h-4" />} title="Pregnancy History">
+          <Section icon={<Heart className="w-3.5 h-3.5" />} title="Pregnancy history">
             {pregnancyLogs.length > 0 ? (
-              <div className="relative pl-8">
-                {/* Vertical timeline line */}
-                <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-saffron/20" />
+              <div className="relative pl-6">
+                <div className="absolute left-[10px] top-2 bottom-2 w-px bg-border" />
                 {pregnancyLogs.map((pl, idx) => (
-                  <div key={pl.id} className="relative mb-4 last:mb-0">
-                    {/* Timeline node */}
-                    <div className={`absolute -left-[28px] top-1 w-6 h-6 rounded-full border-2 flex items-center justify-center ${idx === 0 ? "bg-saffron/10 border-saffron" : "bg-muted border-saffron/30"}`}>
-                      <Circle className={`w-2 h-2 ${idx === 0 ? "text-saffron fill-saffron" : "text-saffron/40 fill-saffron/40"}`} />
+                  <div key={pl.id} className="relative mb-3 last:mb-0">
+                    <div className={`absolute -left-[19px] top-1.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                      idx === 0 ? "bg-saffron border-saffron" : "bg-card border-border"
+                    }`}>
+                      <Circle className={`w-1 h-1 ${idx === 0 ? "text-white fill-white" : "text-muted-foreground/40 fill-muted-foreground/40"}`} />
                     </div>
-                    {/* Content */}
-                    <div className="bg-white rounded-xl border border-saffron/10 p-4 shadow-sm">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-saffron/10 flex items-center justify-center"><Baby className="w-4 h-4 text-saffron" /></div>
-                        <div>
-                          <p className="text-sm font-semibold">Birth #{pregnancyLogs.length - idx}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(pl.birth_date)}</p>
+                    <div className="surface p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-md bg-saffron/10 text-saffron ring-1 ring-saffron/20 flex items-center justify-center">
+                          <Baby className="w-3 h-3" strokeWidth={1.8} />
                         </div>
-                        {idx === 0 && <span className="ml-auto px-2 py-0.5 rounded bg-saffron/10 text-saffron text-xs font-medium">Latest</span>}
+                        <div>
+                          <p className="text-[0.85rem] font-semibold text-foreground">Birth #{pregnancyLogs.length - idx}</p>
+                          <p className="text-[0.7rem] text-muted-foreground tabular">{formatDate(pl.birth_date)}</p>
+                        </div>
+                        {idx === 0 && <span className="ml-auto text-[0.65rem] font-medium text-saffron bg-saffron/10 border border-saffron/20 px-1.5 py-0.5 rounded">Latest</span>}
                       </div>
-
-                      {/* Gestation period arrow */}
-                      <div className="flex items-center gap-2 mb-2 bg-saffron/5 rounded-lg px-3 py-2">
-                        <Heart className="w-3.5 h-3.5 text-pink-500" />
-                        <span className="text-xs text-muted-foreground">Conception: {formatDate(pl.conception_date)}</span>
+                      <div className="flex items-center gap-2 surface-soft px-2.5 py-1.5 text-[0.78rem]">
+                        <Heart className="w-3 h-3 text-pink-500" strokeWidth={1.8} />
+                        <span className="text-muted-foreground">Conception {formatDate(pl.conception_date)}</span>
                         {pl.gestation_period && (
                           <>
-                            <ArrowRight className="w-3.5 h-3.5 text-saffron" />
-                            <span className="text-xs font-medium text-saffron">{pl.gestation_period} gestation</span>
+                            <ArrowRight className="w-3 h-3 text-saffron" strokeWidth={2} />
+                            <span className="font-medium text-saffron">{pl.gestation_period} gestation</span>
                           </>
                         )}
                       </div>
-
-                      {/* Calving interval */}
                       {pl.calving_interval && (
-                        <div className="flex items-center gap-2 bg-navy/5 rounded-lg px-3 py-2">
-                          <ArrowDownRight className="w-3.5 h-3.5 text-navy" />
-                          <span className="text-xs font-medium text-navy">Interval from previous: {pl.calving_interval}</span>
+                        <div className="flex items-center gap-2 bg-info/8 border border-info/15 rounded-md px-2.5 py-1.5 text-[0.78rem] mt-1.5">
+                          <ArrowDownRight className="w-3 h-3 text-info" strokeWidth={1.8} />
+                          <span className="font-medium text-info">Interval {pl.calving_interval}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-            ) : <p className="text-sm text-muted-foreground">No pregnancy records found.</p>}
+            ) : (
+              <p className="text-[0.85rem] text-muted-foreground">No pregnancy records found.</p>
+            )}
           </Section>
 
-          {/* BREED SCORE */}
           {bs && breedScores.length > 0 && (
-            <Section icon={<Shield className="w-4 h-4" />} title="Breed Score">
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-64 h-64"><ResponsiveContainer width="100%" height="100%"><RadarChart data={breedScores} outerRadius="75%"><PolarGrid /><PolarAngleAxis dataKey="trait" tick={{ fontSize: 8 }} /><PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 9 }} /><Radar name="Score" dataKey="score" stroke="#FF9933" fill="#FF9933" fillOpacity={0.3} strokeWidth={2} /><Tooltip /></RadarChart></ResponsiveContainer></div>
-                <div className="flex-1 w-full">
-                  <div className="bg-gradient-to-r from-saffron/10 to-navy/10 rounded-xl p-4 text-center mb-3"><p className="text-xs text-muted-foreground uppercase">Average Score</p><p className={`text-2xl font-bold ${totalScore >= 7 ? "text-green-500" : totalScore >= 5 ? "text-yellow-500" : "text-red-500"}`}>{totalScore.toFixed(1)}<span className="text-sm text-muted-foreground">/10</span></p></div>
-                  <div className="space-y-1.5">{breedScores.map(d => (<div key={d.trait} className="flex items-center gap-2"><span className="text-xs w-20 shrink-0">{d.trait}</span><div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden"><div className={`h-full rounded-full ${d.score >= 7 ? "bg-green-500" : d.score >= 5 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${(d.score / 10) * 100}%` }} /></div><span className={`text-xs font-bold w-6 text-right ${d.score >= 7 ? "text-green-500" : d.score >= 5 ? "text-yellow-500" : "text-red-500"}`}>{d.score}</span></div>))}</div>
+            <Section icon={<Shield className="w-3.5 h-3.5" />} title="Breed score">
+              <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-5 items-center">
+                <ResponsiveContainer width="100%" height={200}>
+                  <RadarChart data={breedScores} outerRadius="75%">
+                    <PolarGrid stroke="#DDD7C5" />
+                    <PolarAngleAxis dataKey="trait" tick={{ fontSize: 9, fill: "#6B6759" }} />
+                    <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 9, fill: "#6B6759" }} />
+                    <Radar name="Score" dataKey="score" stroke="#DC4F0A" fill="#DC4F0A" fillOpacity={0.15} strokeWidth={2} />
+                    <Tooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
+                <div>
+                  <div className="bg-saffron/[0.06] border border-saffron/15 rounded-md p-3 text-center mb-3">
+                    <p className="eyebrow">Average</p>
+                    <p className={`text-[1.5rem] font-semibold mt-1 metric ${totalScore >= 7 ? "text-success" : totalScore >= 5 ? "text-warning" : "text-destructive"}`}>
+                      {totalScore.toFixed(1)}<span className="text-[0.85rem] text-muted-foreground font-normal">/10</span>
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    {breedScores.map(d => (
+                      <div key={d.trait} className="flex items-center gap-2">
+                        <span className="text-[0.7rem] text-muted-foreground w-16 shrink-0">{d.trait}</span>
+                        <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full ${d.score >= 7 ? "bg-success" : d.score >= 5 ? "bg-warning" : "bg-destructive"}`} style={{ width: `${(d.score / 10) * 100}%` }} />
+                        </div>
+                        <span className={`text-[0.7rem] font-semibold w-5 text-right metric ${d.score >= 7 ? "text-success" : d.score >= 5 ? "text-warning" : "text-destructive"}`}>{d.score}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </Section>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      <div className="no-print text-center pb-4"><button onClick={() => navigate(-1)} className="text-xs text-saffron hover:underline">Back</button></div>
-
-      {/* Fullscreen Chart Modal */}
       {fullscreenChart && (() => {
         const isMonthly = fullscreenChart === "monthly";
         const chartData = isMonthly ? milkWithAvg?.data : dailyWithAvg?.data;
         const chartAvg = isMonthly ? milkWithAvg?.average : dailyWithAvg?.average;
-        const title = isMonthly ? "Monthly Milk Production" : "Daily Milk — Last 30 Days";
-        const strokeColor = isMonthly ? "#FF9933" : "#1B3A6B";
-        const avgColor = isMonthly ? "#1B3A6B" : "#FF9933";
-        const gradientId = isMonthly ? "fullMilkG" : "fullDailyG";
-
+        const strokeColor = isMonthly ? "#DC4F0A" : "#142E55";
+        const avgColor = isMonthly ? "#142E55" : "#DC4F0A";
+        const title = isMonthly ? "Monthly milk production" : "Daily milk · last 30 days";
         return (
-          <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col" onClick={() => setFullscreenChart(null)}>
-            <div className="flex items-center justify-between px-6 py-4 bg-white/10 backdrop-blur shrink-0">
-              <h2 className="text-white text-lg font-bold">{ov?.name} — {title}</h2>
-              <button onClick={() => setFullscreenChart(null)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5 text-white" /></button>
+          <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col animate-fade-in" onClick={() => setFullscreenChart(null)}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+              <div>
+                <h2 className="text-[1.05rem] font-semibold text-foreground">{ov?.name} · {title}</h2>
+                <p className="text-[0.78rem] text-muted-foreground">Click anywhere to close</p>
+              </div>
+              <button onClick={() => setFullscreenChart(null)} className="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <div className="flex-1 p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex-1 p-5" onClick={e => e.stopPropagation()}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData || []} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                <AreaChart data={chartData || []} margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
                   <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={strokeColor} stopOpacity={0.5} />
-                      <stop offset="95%" stopColor={strokeColor} stopOpacity={0} />
+                    <linearGradient id="fullG" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
+                      <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} angle={-45} axisLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", fontSize: "13px" }} labelStyle={{ color: "#fff" }} />
-                  {chartAvg != null && <ReferenceLine y={chartAvg} stroke={avgColor} strokeDasharray="8 4" strokeWidth={2} label={{ value: `Average ${chartAvg}L`, position: "insideTopRight", fill: avgColor, fontSize: 13, fontWeight: "bold" }} />}
-                  <Area type="monotone" dataKey="milk" stroke={strokeColor} strokeWidth={3} fill={`url(#${gradientId})`} dot={{ r: 3, fill: strokeColor }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
+                  <CartesianGrid strokeDasharray="2 4" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  {chartAvg != null && <ReferenceLine y={chartAvg} stroke={avgColor} strokeDasharray="6 3" label={{ value: `Avg ${chartAvg} L`, position: "insideTopRight", fill: avgColor, fontSize: 11, fontWeight: 600 }} />}
+                  <Area type="monotone" dataKey="milk" stroke={strokeColor} strokeWidth={2.5} fill="url(#fullG)" dot={{ r: 3, fill: strokeColor }} activeDot={{ r: 5, stroke: "white", strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
-            <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
-              <div className="flex items-center gap-2"><div className="w-4 h-1 rounded" style={{ backgroundColor: strokeColor }} /><span className="text-white/70 text-sm">Milk Production</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded" style={{ backgroundColor: avgColor, border: "1px dashed" }} /><span className="text-white/70 text-sm">Average ({chartAvg} L)</span></div>
-              <div className="text-white/50 text-sm ml-auto">Click anywhere to close</div>
             </div>
           </div>
         );
@@ -304,8 +428,52 @@ export function CattleProfile() {
 }
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return <div><h3 className="flex items-center gap-1.5 text-xs font-semibold text-saffron uppercase tracking-widest mb-3">{icon}{title}</h3>{children}</div>;
+  return (
+    <div>
+      <h3 className="flex items-center gap-1.5 text-[0.7rem] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-3">
+        {icon}{title}
+      </h3>
+      {children}
+    </div>
+  );
 }
+
 function Field({ label, value }: { label: string; value: string }) {
-  return <div className="bg-muted/20 rounded-lg p-2.5"><p className="text-[0.55rem] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p><p className="text-sm font-medium">{value}</p></div>;
+  return (
+    <div className="surface-soft p-2.5">
+      <p className="eyebrow">{label}</p>
+      <p className="text-[0.85rem] font-medium text-foreground mt-1 truncate">{value}</p>
+    </div>
+  );
+}
+
+function ChartCard({ label, children, onFullscreen }: { label: string; color: string; children: React.ReactNode; onFullscreen?: () => void }) {
+  return (
+    <div className="surface-soft p-3 mb-2.5">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[0.78rem] text-muted-foreground">{label}</p>
+        {onFullscreen && (
+          <button onClick={onFullscreen} className="h-6 w-6 rounded-md hover:bg-background text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors" title="Full screen">
+            <Maximize2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ParentAvatar({ parent, label, color }: { parent: ParentInfo; label: string; color: "saffron" | "navy" }) {
+  const styles = color === "saffron"
+    ? "bg-saffron/10 text-saffron ring-1 ring-saffron/20"
+    : "bg-navy/10 text-navy ring-1 ring-navy/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-500/20";
+  return (
+    <div className="text-center">
+      <div className={`w-12 h-12 rounded-lg ${styles} flex items-center justify-center mx-auto`}>
+        <CowIcon size={20} strokeWidth={1.6} />
+      </div>
+      <p className="text-[0.78rem] mt-1.5 font-medium text-foreground">{parent.name || "—"}</p>
+      <p className="eyebrow mt-0.5">{label}</p>
+    </div>
+  );
 }

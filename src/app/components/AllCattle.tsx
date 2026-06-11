@@ -2,15 +2,13 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  ArrowLeft, Search, Mic, MicOff, Loader2, AlertTriangle,
-  SlidersHorizontal, X, CalendarDays,
+  ArrowLeft, Mic, MicOff, SlidersHorizontal, X, CalendarDays, Search, Filter,
 } from "lucide-react";
-import { SiHappycow } from "react-icons/si";
 import { CowCard } from "./CowCard";
 import { CattleMilkCalendar } from "./CattleMilkCalendar";
 import { Cow } from "../data/mockData";
-
-/* ─── Types ─── */
+import { CowIcon, Female, Male, Calf, Bull, PregnantIcon, MilkDrop } from "./icons/icons";
+import { PageLoader } from "./ui/loader";
 
 interface CattleItem {
   tag_number: string;
@@ -22,61 +20,33 @@ interface CattleItem {
   is_pregnant: number | null;
 }
 
-/* ─── Filter option lists ─── */
+const ACQUISITION_TYPES = ["BIRTH", "બહારથી આવેલ", "DONATION", "આંધળી ગાય", "PURCHASED"];
+const ANIMAL_TYPES = ["BULL", "COW", "OX", "MALE CALF", "FEMALE CALF", "આજીવન મા બની શકશે નહી"];
 
-const GENDERS = ["Male", "Female"];
-
-const ACQUISITION_TYPES = [
-  "BIRTH",
-  "બહારથી આવેલ",
-  "DONATION",
-  "આંધળી ગાય",
-  "PURCHASED",
-];
-
-const ANIMAL_TYPES = [
-  "BULL",
-  "COW",
-  "OX",
-  "MALE CALF",
-  "FEMALE CALF",
-  "આજીવન મા બની શકશે નહી",
-];
-
-/* ─── Helpers ─── */
-
-const ANIMAL_ICONS: Record<string, string> = {
-  BULL: "🐂",
-  COW: "🐄",
-  OX: "🐂",
-  "MALE CALF": "🐃",
-  "FEMALE CALF": "🐄",
+const ANIMAL_META: Record<string, { icon: React.ReactNode; color: string }> = {
+  BULL:        { icon: <Bull size={14} strokeWidth={1.6} />,        color: "text-navy dark:text-blue-300" },
+  COW:         { icon: <CowIcon size={14} strokeWidth={1.6} />,     color: "text-saffron" },
+  OX:          { icon: <Bull size={14} strokeWidth={1.6} />,        color: "text-muted-foreground" },
+  "MALE CALF": { icon: <Calf size={14} strokeWidth={1.6} />,        color: "text-navy dark:text-blue-300" },
+  "FEMALE CALF": { icon: <Calf size={14} strokeWidth={1.6} />,      color: "text-saffron" },
 };
 
-const GENDER_BADGE: Record<string, string> = {
-  Male: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-  Female: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border-pink-200 dark:border-pink-800",
+const ACQ_META: Record<string, string> = {
+  BIRTH: "bg-saffron/8 text-saffron border-saffron/20",
+  DONATION: "bg-purple-500/8 text-purple-600 border-purple-500/20 dark:text-purple-300",
+  PURCHASED: "bg-amber-500/8 text-amber-600 border-amber-500/20 dark:text-amber-300",
+  "બહારથી આવેલ": "bg-cyan-500/8 text-cyan-600 border-cyan-500/20 dark:text-cyan-300",
+  "આંધળી ગાય": "bg-pink-500/8 text-pink-600 border-pink-500/20 dark:text-pink-300",
 };
-
-const ACQUISITION_BADGE: Record<string, string> = {
-  BIRTH: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  DONATION: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  PURCHASED: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  "બહારથી આવેલ": "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
-  "આંધળી ગાય": "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-};
-
-/* ─── Component ─── */
 
 export function AllCattle() {
   const navigate = useNavigate();
   const { type } = useParams<{ type: string }>();
-
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const config = type === "milking"
-    ? { api: `${API_BASE}/all-milking-cattle`, title: "Milking Cattle", subtitle: "milking cows" }
-    : { api: `${API_BASE}/all-present-cattle`, title: "All Present Cattle", subtitle: "cattle in gaushala" };
+    ? { api: `${API_BASE}/all-milking-cattle`, title: "Milking cattle", subtitle: "currently producing" }
+    : { api: `${API_BASE}/all-present-cattle`, title: "All cattle", subtitle: "at the gaushala" };
 
   const [cattleList, setCattleList] = useState<CattleItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,20 +58,15 @@ export function AllCattle() {
   const [calendarName, setCalendarName] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  /* Filter state */
-  const [genderFilter, setGenderFilter] = useState<string[]>([]);
-  const [acqFilter, setAcqFilter] = useState<string[]>([]);
   const [animalFilter, setAnimalFilter] = useState<string[]>([]);
+  const [acqFilter, setAcqFilter] = useState<string[]>([]);
   const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
   const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
 
   const recognitionRef = useRef<any>(null);
 
-  /* ─── Fetch ─── */
-
   useEffect(() => {
-    setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]);
-    setMilkingFilter(null); setPregnantFilter(null);
+    setAnimalFilter([]); setAcqFilter([]); setMilkingFilter(null); setPregnantFilter(null);
     setSearch(""); setSelectedCow(null);
     fetch(config.api)
       .then(r => { if (!r.ok) throw new Error(`API error ${r.status}`); return r.json(); })
@@ -109,411 +74,282 @@ export function AllCattle() {
       .catch(err => { setError(err.message); setLoading(false); });
   }, [config.api]);
 
-  /* ─── Derived unique options ─── */
-
-  const acqOptions = useMemo(() => {
-    const set = new Set(cattleList.map(c => c.acquisition_type).filter(Boolean));
-    const order = [...ACQUISITION_TYPES];
-    return order.filter(o => set.has(o)).concat([...set].filter(s => !order.includes(s)));
-  }, [cattleList]);
-
-  const animalOptions = useMemo(() => {
-    const set = new Set(cattleList.map(c => c.animal_type).filter(Boolean));
-    const order = [...ANIMAL_TYPES];
-    return order.filter(o => set.has(o)).concat([...set].filter(s => !order.includes(s)));
-  }, [cattleList]);
-
-  /* ─── Filter logic ─── */
-
   const filtered = useMemo(() => {
     return cattleList.filter(c => {
       const matchSearch = !search ||
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.tag_number.toLowerCase().includes(search.toLowerCase());
-      const matchGender = genderFilter.length === 0 || genderFilter.includes(c.gender);
       const matchAcq = acqFilter.length === 0 || acqFilter.includes(c.acquisition_type);
       const matchAnimal = animalFilter.length === 0 || animalFilter.includes(c.animal_type);
       const matchMilking = milkingFilter === null || (milkingFilter ? c.is_milking === 1 : c.is_milking === 0 || c.is_milking === null);
       const matchPregnant = pregnantFilter === null || (pregnantFilter ? c.is_pregnant === 1 : c.is_pregnant === 0 || c.is_pregnant === null);
-      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant;
+      return matchSearch && matchAcq && matchAnimal && matchMilking && matchPregnant;
     });
-  }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter]);
+  }, [cattleList, search, acqFilter, animalFilter, milkingFilter, pregnantFilter]);
 
-  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0);
-
-  /* ─── Speech ─── */
+  const activeFilterCount = acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0);
 
   const handleSpeech = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert("Speech recognition not supported in this browser"); return; }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
     if (listening && recognitionRef.current) { recognitionRef.current.stop(); setListening(false); return; }
-    const recognition = new SpeechRecognition();
-    recognition.lang = "gu-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.onstart = () => setListening(true);
-    recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
-    recognition.onresult = (event: any) => { setSearch(event.results[0][0].transcript); };
-    recognitionRef.current = recognition;
-    recognition.start();
+    const r = new SR();
+    r.lang = "gu-IN"; r.continuous = false; r.interimResults = false;
+    r.onstart = () => setListening(true); r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    r.onresult = (e: any) => setSearch(e.results[0][0].transcript);
+    recognitionRef.current = r; r.start();
   }, [listening]);
 
-  useEffect(() => {
-    return () => { if (recognitionRef.current) recognitionRef.current.abort(); };
-  }, []);
-
-  /* ─── Select cattle → CowCard ─── */
+  useEffect(() => () => { recognitionRef.current?.abort(); }, []);
 
   const handleSelect = (item: CattleItem) => {
     const cow: Cow = {
-      id: item.tag_number,
-      name: item.name,
-      tagNumber: item.tag_number,
-      breed: "Gir",
-      dateOfBirth: "",
-      gender: item.gender === "Male" ? "Male" : "Female",
-      weight: 0,
-      source: "Natural Birth",
-      status: "Milking",
-      motherId: null,
-      fatherId: null,
-      image: "",
-      milkOutput: [],
-      weightHistory: [],
-      healthStatus: "Healthy",
-      lastVaccination: "",
-      nextVaccination: "",
-      dailyMilk: 0,
-      notes: "",
+      id: item.tag_number, name: item.name, tagNumber: item.tag_number, breed: "Gir",
+      dateOfBirth: "", gender: item.gender === "Male" ? "Male" : "Female",
+      weight: 0, source: "Natural Birth", status: "Milking",
+      motherId: null, fatherId: null, image: "", milkOutput: [], weightHistory: [],
+      healthStatus: "Healthy", lastVaccination: "", nextVaccination: "", dailyMilk: 0, notes: "",
       generation: 1,
       breedScore: { headShape: 0, hornCurvature: 0, earShape: 0, humpSize: 0, dewlap: 0, bodyFrame: 0, udderShape: 0, coatColor: 0, tailLength: 0, overallConformation: 0 },
-      totalBreedScore: 0,
-      milkThreshold: 0,
-      weightThreshold: 0,
-      gestationMonths: null,
-      expectedDeliveryDate: null,
-      lastCalvingDate: null,
-      totalCalves: 0,
-      lactationMonthsSinceCalving: null,
-      dateOfPassing: null,
-      causeOfDeath: null,
-      yearsOfService: null,
-      lifetimeMilkLiters: null,
-      memorialNote: null,
+      totalBreedScore: 0, milkThreshold: 0, weightThreshold: 0,
+      gestationMonths: null, expectedDeliveryDate: null, lastCalvingDate: null,
+      totalCalves: 0, lactationMonthsSinceCalving: null, dateOfPassing: null, causeOfDeath: null,
+      yearsOfService: null, lifetimeMilkLiters: null, memorialNote: null,
     };
     setSelectedCow(cow);
   };
 
-  /* ─── Toggle helpers ─── */
+  const toggle = (arr: string[], val: string) => arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
+  const clearAll = () => { setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); };
 
-  const toggle = (arr: string[], val: string) =>
-    arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
-
-  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); };
-
-  /* ─── Render: loading / error ─── */
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-saffron animate-spin" />
-          <p className="text-muted-foreground text-sm">Loading cattle...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <PageLoader label="Loading cattle…" />;
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-8 text-center max-w-md">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <h3 className="text-lg font-bold mb-1">Failed to load</h3>
-          <p className="text-sm text-muted-foreground">{error}</p>
-          <button onClick={() => navigate("/")}
-            className="mt-4 px-4 py-2 bg-saffron text-white rounded-lg text-sm hover:bg-saffron-dark">Go Back</button>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh] p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="surface p-8 text-center max-w-md"
+        >
+          <p className="text-destructive font-medium">Failed to load</p>
+          <p className="text-sm text-muted-foreground mt-1">{error}</p>
+          <button onClick={() => navigate("/")} className="mt-4 h-9 px-4 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90">
+            Go back
+          </button>
+        </motion.div>
       </div>
     );
   }
 
-  /* ─── Main render ─── */
-
   return (
-    <div className="p-4 lg:p-6 space-y-4">
-      {/* ───── Header ───── */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-saffron to-saffron-dark p-6">
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-black/10 blur-3xl" />
-        <div className="relative z-[1] flex items-center gap-4">
-          <button onClick={() => navigate("/")}
-            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-            <ArrowLeft className="w-5 h-5 text-white" />
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate("/")}
+            className="h-8 w-8 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
           </button>
           <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="text-white">{config.title}</h1>
-            <p style={{ fontSize: '0.75rem' }} className="text-white/70">{filtered.length} of {cattleList.length} {config.subtitle}</p>
+            <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em]">{config.title}</h1>
+            <p className="text-[0.82rem] text-muted-foreground tabular">
+              <span className="text-foreground font-medium">{filtered.length}</span> of {cattleList.length} · {config.subtitle}
+            </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* ───── Search + Filter Toggle ───── */}
-      <div className="flex items-center gap-2">
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
           <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or tag number... | નામ અથવા ટેગ નંબર દ્વારા શોધો..."
-            className="w-full pl-10 pr-4 py-3 rounded-xl border border-saffron/20 bg-white dark:bg-navy text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-saffron/40 focus:border-saffron transition-all"
-            style={{ fontSize: '0.9rem' }}
+            type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or tag…"
+            className="w-full h-9 pl-9 pr-10 rounded-md border border-border bg-card text-[0.85rem] outline-none transition focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10 placeholder:text-muted-foreground/40"
           />
-          <button onClick={handleSpeech}
-            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors ${listening ? "text-red-500" : "text-muted-foreground hover:text-saffron"}`}
-            title={listening ? "Stop" : "Voice search (Gujarati)"}>
-            {listening ? <MicOff className="w-5 h-5 animate-pulse" /> : <Mic className="w-5 h-5" />}
+          <button
+            onClick={handleSpeech}
+            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors ${listening ? "text-destructive animate-pulse-soft" : "text-muted-foreground/40 hover:text-foreground"}`}
+            title="Voice search (Gujarati)"
+          >
+            {listening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
           </button>
         </div>
-        <button onClick={() => setShowFilters(!showFilters)}
-          className={`h-[48px] px-4 rounded-xl border transition-all flex items-center gap-2 ${showFilters
-            ? "bg-saffron text-white border-saffron shadow-md"
-            : "bg-white dark:bg-navy text-muted-foreground border-saffron/20 hover:border-saffron/40"
-            }`}>
-          <SlidersHorizontal className="w-4 h-4" />
-          <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>Filters</span>
+
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`h-9 px-3 rounded-md text-[0.82rem] font-medium transition-colors flex items-center gap-1.5 ${
+            showFilters ? "bg-foreground text-background" : "border border-border text-foreground hover:bg-muted"
+          }`}
+        >
+          <Filter className="w-3.5 h-3.5" strokeWidth={1.8} />
+          Filters
           {activeFilterCount > 0 && (
-            <span className="w-5 h-5 rounded-full bg-white text-saffron text-[0.6rem] font-bold flex items-center justify-center">
+            <span className={`px-1.5 rounded text-[0.65rem] font-semibold ${showFilters ? "bg-background/20" : "bg-foreground/8 text-foreground"}`}>
               {activeFilterCount}
             </span>
           )}
         </button>
       </div>
 
-      {/* ───── Listening indicator ───── */}
-      {listening && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-          <p style={{ fontSize: '0.85rem' }} className="text-red-600 dark:text-red-400">Listening in Gujarati... Speak now</p>
-        </motion.div>
-      )}
-
-      {/* ───── Filter Panel ───── */}
+      {/* Filter panel */}
       <AnimatePresence>
         {showFilters && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="bg-white dark:bg-navy border border-saffron/20 rounded-2xl p-5 space-y-5 shadow-lg">
-
-              {/* Header row */}
+          <motion.div
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="surface p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 style={{ fontSize: '0.85rem', fontWeight: 600 }} className="text-foreground flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-saffron" /> Filters
-                </h3>
+                <p className="text-[0.85rem] font-semibold text-foreground">Refine results</p>
                 {activeFilterCount > 0 && (
-                  <button onClick={clearAll}
-                    className="text-[0.7rem] text-saffron hover:text-saffron-dark flex items-center gap-1 font-medium">
+                  <button onClick={clearAll} className="text-[0.72rem] text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
                     <X className="w-3 h-3" /> Clear all
                   </button>
                 )}
               </div>
 
-              {/* Gender */}
-              <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">Gender</p>
-                <div className="flex gap-2">
-                  {GENDERS.map(g => (
-                    <button key={g} onClick={() => setGenderFilter(toggle(genderFilter, g))}
-                      className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${genderFilter.includes(g)
-                        ? g === "Male"
-                          ? "bg-blue-500 text-white border-blue-500 shadow"
-                          : "bg-pink-500 text-white border-pink-500 shadow"
-                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-saffron/40"
-                        }`}>
-                      {g === "Male" ? "♂ " : "♀ "}{g}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <FilterRow label="Acquisition type">
+                {ACQUISITION_TYPES.map(a => (
+                  <FilterChip key={a} active={acqFilter.includes(a)} onClick={() => setAcqFilter(toggle(acqFilter, a))}>{a}</FilterChip>
+                ))}
+              </FilterRow>
 
-              {/* Acquisition Type */}
-              <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
-                  Acquisition Type
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {acqOptions.map(a => (
-                    <button key={a} onClick={() => setAcqFilter(toggle(acqFilter, a))}
-                      className={`px-3 py-1.5 rounded-lg border text-[0.75rem] font-medium transition-all ${acqFilter.includes(a)
-                        ? "bg-saffron text-white border-saffron shadow-sm"
-                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-saffron/40"
-                        }`}>
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <FilterRow label="Animal type">
+                {ANIMAL_TYPES.map(a => (
+                  <FilterChip key={a} active={animalFilter.includes(a)} onClick={() => setAnimalFilter(toggle(animalFilter, a))}>
+                    {ANIMAL_META[a] ? <span className={ANIMAL_META[a].color}>{ANIMAL_META[a].icon}</span> : null} {a}
+                  </FilterChip>
+                ))}
+              </FilterRow>
 
-              {/* Animal Type */}
-              <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
-                  Animal Type
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {animalOptions.map(a => (
-                    <button key={a} onClick={() => setAnimalFilter(toggle(animalFilter, a))}
-                      className={`px-3 py-1.5 rounded-lg border text-[0.75rem] font-medium transition-all ${animalFilter.includes(a)
-                        ? "bg-navy text-white border-navy shadow-sm"
-                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-navy/40"
-                        }`}>
-                      {ANIMAL_ICONS[a] ?? ""} {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Milking Status */}
-              <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
-                  Milking Status
-                </p>
-                <div className="flex gap-2">
-                  {[{ label: "Milking", value: true }, { label: "Not Milking", value: false }].map(o => (
-                    <button key={o.label} onClick={() => setMilkingFilter(milkingFilter === o.value ? null : o.value)}
-                      className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${milkingFilter === o.value
-                        ? "bg-navy text-white border-navy shadow"
-                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-saffron/40"
-                        }`}>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pregnancy Status */}
-              <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
-                  Pregnancy Status
-                </p>
-                <div className="flex gap-2">
-                  {[{ label: "Pregnant", value: true }, { label: "Not Pregnant", value: false }].map(o => (
-                    <button key={o.label} onClick={() => setPregnantFilter(pregnantFilter === o.value ? null : o.value)}
-                      className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${pregnantFilter === o.value
-                        ? "bg-pink-500 text-white border-pink-500 shadow"
-                        : "bg-transparent text-muted-foreground border-saffron/20 hover:border-saffron/40"
-                        }`}>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+              <FilterRow label="Status">
+                <FilterChip active={milkingFilter === true} onClick={() => setMilkingFilter(milkingFilter === true ? null : true)}>
+                  <MilkDrop size={11} strokeWidth={1.8} /> Milking
+                </FilterChip>
+                <FilterChip active={milkingFilter === false} onClick={() => setMilkingFilter(milkingFilter === false ? null : false)}>
+                  Milking · No
+                </FilterChip>
+                <FilterChip active={pregnantFilter === true} onClick={() => setPregnantFilter(pregnantFilter === true ? null : true)}>
+                  <PregnantIcon size={11} strokeWidth={1.8} /> Pregnant
+                </FilterChip>
+                <FilterChip active={pregnantFilter === false} onClick={() => setPregnantFilter(pregnantFilter === false ? null : false)}>
+                  Pregnant · No
+                </FilterChip>
+              </FilterRow>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ───── Active filter chips ───── */}
+      {/* Active chips */}
       {activeFilterCount > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {genderFilter.map(g => (
-            <span key={g}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium border ${GENDER_BADGE[g]}`}>
-              {g} <button onClick={() => setGenderFilter(toggle(genderFilter, g))}><X className="w-3 h-3" /></button>
-            </span>
-          ))}
           {acqFilter.map(a => (
-            <span key={a}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-saffron/10 text-saffron border border-saffron/30">
-              {a} <button onClick={() => setAcqFilter(toggle(acqFilter, a))}><X className="w-3 h-3" /></button>
+            <span key={a} className={`chip ${ACQ_META[a] ?? "chip-neutral"}`}>
+              {a}
+              <button onClick={() => setAcqFilter(toggle(acqFilter, a))} className="hover:opacity-60 transition-opacity">
+                <X className="w-2.5 h-2.5" />
+              </button>
             </span>
           ))}
           {animalFilter.map(a => (
-            <span key={a}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-navy/10 text-navy dark:bg-navy/30 dark:text-white border border-navy/30">
-              {ANIMAL_ICONS[a] ?? ""} {a} <button onClick={() => setAnimalFilter(toggle(animalFilter, a))}><X className="w-3 h-3" /></button>
+            <span key={a} className="chip chip-neutral">
+              {ANIMAL_META[a] ? <span className={ANIMAL_META[a].color}>{ANIMAL_META[a].icon}</span> : null} {a}
+              <button onClick={() => setAnimalFilter(toggle(animalFilter, a))} className="hover:opacity-60 transition-opacity">
+                <X className="w-2.5 h-2.5" />
+              </button>
             </span>
           ))}
           {milkingFilter !== null && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-navy/10 text-navy dark:bg-navy/30 dark:text-white border border-navy/30">
-              {milkingFilter ? "Milking" : "Not Milking"} <button onClick={() => setMilkingFilter(null)}><X className="w-3 h-3" /></button>
+            <span className="chip chip-neutral">
+              <MilkDrop size={10} strokeWidth={1.8} /> {milkingFilter ? "Milking" : "Not milking"}
+              <button onClick={() => setMilkingFilter(null)} className="hover:opacity-60 transition-opacity">
+                <X className="w-2.5 h-2.5" />
+              </button>
             </span>
           )}
           {pregnantFilter !== null && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
-              {pregnantFilter ? "Pregnant" : "Not Pregnant"} <button onClick={() => setPregnantFilter(null)}><X className="w-3 h-3" /></button>
+            <span className="chip chip-neutral">
+              <PregnantIcon size={10} strokeWidth={1.8} /> {pregnantFilter ? "Pregnant" : "Not pregnant"}
+              <button onClick={() => setPregnantFilter(null)} className="hover:opacity-60 transition-opacity">
+                <X className="w-2.5 h-2.5" />
+              </button>
             </span>
           )}
         </div>
       )}
 
-      {/* ───── Cattle Grid ───── */}
+      {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <SiHappycow className="w-16 h-16 text-saffron/30 mx-auto mb-3" />
-          <p style={{ fontSize: '1rem' }} className="text-muted-foreground">No cattle found</p>
+        <div className="surface py-16 text-center">
+          <CowIcon size={32} className="mx-auto text-muted-foreground/30" strokeWidth={1.2} />
+          <p className="text-[0.9rem] text-muted-foreground mt-3">No cattle match your filters</p>
           {activeFilterCount > 0 && (
-            <button onClick={clearAll}
-              className="mt-2 text-[0.8rem] text-saffron hover:underline">Clear filters</button>
+            <button onClick={clearAll} className="mt-2 text-[0.8rem] text-foreground hover:underline font-medium">
+              Clear all filters
+            </button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
           {filtered.map((c, i) => (
             <motion.button
               key={c.tag_number}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.02 }}
+              transition={{ delay: Math.min(i * 0.012, 0.3), duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               onClick={() => type === "milking" ? (setCalendarTag(c.tag_number), setCalendarName(c.name)) : handleSelect(c)}
-              className="group bg-white dark:bg-navy rounded-xl border border-saffron/10 p-4 text-left hover:shadow-lg hover:shadow-saffron/5 hover:border-saffron/30 hover:-translate-y-0.5 transition-all duration-200"
+              className="group surface p-3.5 text-left hover-lift focus-ring relative"
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${c.gender === "Male" ? "bg-gradient-to-br from-blue-500 to-blue-700" : "bg-gradient-to-br from-pink-500 to-pink-600"}`}>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 700 }} className="text-white">
-                    {c.name.charAt(0).toUpperCase()}
-                  </span>
+              <div className="flex items-start gap-3">
+                <div className={`relative w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${
+                  c.gender === "Male"
+                    ? "bg-navy/8 text-navy ring-1 ring-navy/15 dark:bg-blue-500/12 dark:text-blue-300 dark:ring-blue-500/20"
+                    : "bg-saffron/8 text-saffron ring-1 ring-saffron/15"
+                }`}>
+                  {c.gender === "Male" ? <Male size={15} strokeWidth={1.6} /> : <Female size={15} strokeWidth={1.6} />}
+                  {(c.is_milking === 1 || c.is_pregnant === 1) && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-saffron ring-2 ring-card" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }} className="text-foreground truncate">{c.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-saffron font-mono">{c.tag_number}</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium ${GENDER_BADGE[c.gender] ?? "bg-gray-100 text-gray-600"}`}>
-                      {c.gender === "Male" ? "♂" : "♀"} {c.gender}
-                    </span>
-                    {c.animal_type && (
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium bg-saffron/10 text-saffron border border-saffron/20">
-                        {ANIMAL_ICONS[c.animal_type] ?? ""} {c.animal_type}
-                      </span>
-                    )}
-                    {c.acquisition_type && (
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium ${ACQUISITION_BADGE[c.acquisition_type] ?? "bg-gray-100 text-gray-600"}`}>
-                        {c.acquisition_type}
-                      </span>
-                    )}
-                    {c.is_milking === 1 && (
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                        🥛 Milking
-                      </span>
-                    )}
-                    {c.is_pregnant === 1 && (
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
-                        🤰 Pregnant
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-[0.88rem] font-semibold text-foreground truncate leading-tight">{c.name}</p>
+                  <p className="text-[0.7rem] text-muted-foreground font-mono mt-0.5 tabular">{c.tag_number}</p>
                 </div>
                 {type === "milking" && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setCalendarTag(c.tag_number); setCalendarName(c.name); }}
-                    className="shrink-0 w-7 h-7 rounded-lg bg-saffron/10 hover:bg-saffron/20 border border-saffron/20 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                    title="View milk calendar"
-                  >
-                    <CalendarDays className="w-3.5 h-3.5 text-saffron" />
-                  </button>
+                  <CalendarDays className="w-3.5 h-3.5 text-saffron opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-1 mt-2.5 text-[0.65rem]">
+                {c.animal_type && (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                    {ANIMAL_META[c.animal_type] ? <span className={ANIMAL_META[c.animal_type].color}>{ANIMAL_META[c.animal_type].icon}</span> : null}
+                    <span className="font-medium uppercase tracking-wider">{c.animal_type}</span>
+                  </span>
+                )}
+                {c.is_milking === 1 && <span className="w-0.5 h-0.5 rounded-full bg-border" />}
+                {c.is_milking === 1 && (
+                  <span className="inline-flex items-center gap-1 text-info">
+                    <MilkDrop size={10} strokeWidth={1.8} />
+                    <span className="font-medium">Milking</span>
+                  </span>
+                )}
+                {c.is_pregnant === 1 && <span className="w-0.5 h-0.5 rounded-full bg-border" />}
+                {c.is_pregnant === 1 && (
+                  <span className="inline-flex items-center gap-1 text-pink-600 dark:text-pink-300">
+                    <PregnantIcon size={10} strokeWidth={1.8} />
+                    <span className="font-medium">Pregnant</span>
+                  </span>
                 )}
               </div>
             </motion.button>
@@ -521,21 +357,39 @@ export function AllCattle() {
         </div>
       )}
 
-      {/* CowCard */}
       <AnimatePresence>
         {selectedCow && <CowCard cow={selectedCow} onClose={() => setSelectedCow(null)} />}
       </AnimatePresence>
 
-      {/* Milk Calendar */}
       <AnimatePresence>
         {calendarTag && (
-          <CattleMilkCalendar
-            tagNumber={calendarTag}
-            cattleName={calendarName}
-            onClose={() => setCalendarTag(null)}
-          />
+          <CattleMilkCalendar tagNumber={calendarTag} cattleName={calendarName} onClose={() => setCalendarTag(null)} />
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="eyebrow mb-2">{label}</p>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`h-7 px-2.5 rounded-md text-[0.75rem] font-medium border transition-colors inline-flex items-center gap-1 ${
+        active
+          ? "bg-foreground text-background border-foreground"
+          : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

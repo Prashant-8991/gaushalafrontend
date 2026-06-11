@@ -1,656 +1,514 @@
-import { useState } from "react";
-import { AnimatePresence } from "motion/react";
+import { useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useNavigate } from "react-router";
 import {
-  Flower2, Droplets, Heart, AlertTriangle, TrendingUp, Users,
-  Activity, Scale, Baby, Milk, Shield, Maximize2, X,
+  TrendingUp, Users, ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, Activity, Shield,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine,
+  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
 } from "recharts";
-import { kpiData, heroImage, herdImage, cows, Cow } from "../data/mockData";
+import { kpiData, herdImage, Cow } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { CowCard } from "./CowCard";
 import { useQuery } from "@tanstack/react-query";
-import { SiHappycow } from "react-icons/si";
 import type { DashboardApiResponse } from "../types/dashboardResponse";
+import { CowIcon, MilkDrop, HeartIcon, BabyIcon, Drop, PregnantIcon } from "./icons/icons";
+import { PageLoader, CowLoaderMark } from "./ui/loader";
 
+const STATUS_COLORS = ["#DC4F0A", "#142E55", "#0F7A3D", "#7C3AED", "#6B6759"];
+const SOURCE_COLORS = ["#DC4F0A", "#142E55", "#0F7A3D", "#7C3AED"];
 
-const STATUS_COLORS = ["#FF6B00", "#E91E63", "#4FC3F7", "#1B3A6B", "#9E9E9E"];
-const SOURCE_COLORS = ["#28a745", "#FF6B00", "#1B3A6B", "#8B5CF6"];
-const GEN_COLORS = ["#0F2340", "#1B3A6B", "#FF6B00", "#FF9933", "#FFC107"];
+/* ─── Animated counter ─── */
+function AnimatedNumber({ value, duration = 1.2, className = "" }: { value: number | null | undefined; duration?: number; className?: string }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef<number>(0);
+  useEffect(() => {
+    const target = value ?? 0;
+    const start = ref.current;
+    const startTime = performance.now();
+    let frame: number;
+    const tick = (t: number) => {
+      const elapsed = (t - startTime) / (duration * 1000);
+      const v = Math.min(elapsed, 1);
+      const eased = 1 - Math.pow(1 - v, 3);
+      const current = Math.round(start + (target - start) * eased);
+      setDisplay(current);
+      if (v < 1) frame = requestAnimationFrame(tick);
+      else ref.current = target;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
+  return <span className={`metric ${className}`}>{display}</span>;
+}
 
 interface KPICardProps {
   icon: React.ReactNode;
   label: string;
-  value: string | number;
-  subtitle?: string;
-  gradient: string;
+  value: number | null | undefined;
+  hint?: string;
+  trend?: { value: number; positive: boolean };
+  index: number;
+  onClick?: () => void;
 }
 
-function KPICard({ icon, label, value, subtitle, gradient }: KPICardProps) {
+function KPICard({ icon, label, value, hint, trend, index, onClick }: KPICardProps) {
   return (
-    <div className="bg-white rounded-xl border border-saffron/10 p-4 hover:shadow-lg hover:shadow-saffron/5 transition-all duration-300 group">
-      <div className="flex items-start justify-between">
-        <div>
-          <p style={{ fontSize: '0.75rem' }} className="text-muted-foreground mb-1">{label}</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 700 }} className="text-foreground">{value}</p>
-          {subtitle && <p style={{ fontSize: '0.7rem' }} className="text-saffron mt-0.5">{subtitle}</p>}
-        </div>
-        <div className={`w-10 h-10 rounded-xl ${gradient} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+    <motion.button
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 + index * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      onClick={onClick}
+      whileHover={{ y: -2 }}
+      className={`group w-full text-left surface p-5 hover-lift focus-ring relative overflow-hidden ${onClick ? "cursor-pointer" : "cursor-default"}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="eyebrow truncate">{label}</p>
+        <span className="text-muted-foreground/40 group-hover:text-saffron transition-colors shrink-0">
           {icon}
-        </div>
+        </span>
       </div>
-    </div>
+      <p className="text-[2rem] font-semibold text-foreground leading-none mt-4">
+        <AnimatedNumber value={value ?? 0} />
+      </p>
+      <div className="flex items-center gap-1.5 mt-3 min-h-[1rem]">
+        {trend && (
+          <span className={`inline-flex items-center gap-0.5 text-[0.7rem] font-medium ${trend.positive ? "text-success" : "text-destructive"}`}>
+            {trend.positive ? <ArrowUpRight className="w-3 h-3" strokeWidth={2} /> : <ArrowDownRight className="w-3 h-3" strokeWidth={2} />}
+            <span className="metric">{trend.value}%</span>
+          </span>
+        )}
+        {hint && <span className="text-[0.7rem] text-muted-foreground truncate">{hint}</span>}
+      </div>
+    </motion.button>
   );
 }
 
 export function Dashboard() {
   const navigate = useNavigate();
-
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const getDashboardData = async (): Promise<DashboardApiResponse> => {
     const response = await fetch(`${API_BASE}/dashboard`);
-
-    if (!response.ok) {
-      throw new Error(`An error occurred: ${response.statusText}`);
-    }
-
-    // Type casting the JSON response ensures TS knows what this data looks like
+    if (!response.ok) throw new Error(`An error occurred: ${response.statusText}`);
     return response.json() as Promise<DashboardApiResponse>;
-  }
+  };
 
-  // 3. Changed the queryKey to match the data being fetched
-  const {
-    data,
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: getDashboardData
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: getDashboardData,
   });
 
-
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
-  const [fsChart, setFsChart] = useState(false);
 
   const milkMonthly = data?.month_wise_milk_production || [];
   const milkAvg = milkMonthly.length
     ? +(milkMonthly.reduce((s: number, m: any) => s + (m.total_milk || 0), 0) / milkMonthly.length).toFixed(0)
     : null;
 
-  const topMilkers = cows
-    .filter(c => c.dailyMilk > 0)
-    .sort((a, b) => b.dailyMilk - a.dailyMilk)
-    .slice(0, 8);
-
-  const topBreed = [...cows]
-    .sort((a, b) => b.totalBreedScore - a.totalBreedScore)
-    .slice(0, 5);
-
-  if (isLoading) {
-    return "Loading ......"
-  }
+  if (isLoading) return <PageLoader label="Loading dashboard…" />;
 
   if (error) {
-    return `Error: ${error}`
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="surface p-8 text-center max-w-md"
+        >
+          <p className="text-destructive font-medium">Failed to load dashboard</p>
+          <p className="text-sm text-muted-foreground mt-1">{String(error)}</p>
+        </motion.div>
+      </div>
+    );
   }
 
-
   const statusDistribution = [
-    {
-      "status": "Milking", count: data?.total_milking_cow,
-    },
-    {
-      "status": "Pregnant", count: data?.total_pregnant_cow
-    },
-    {
-      "status": "Calves", count: (data?.total_male_calf + data?.total_female_calf)
-    },
-    {
-      "status": "Bull", count: data?.total_bull
-    },
-    {
-      "status": "OX", count: data?.total_ox
-    }
-  ]
+    { status: "Milking",  count: data?.total_milking_cow },
+    { status: "Pregnant", count: data?.total_pregnant_cow },
+    { status: "Calves",   count: (data?.total_male_calf ?? 0) + (data?.total_female_calf ?? 0) },
+    { status: "Bulls",    count: data?.total_bull },
+    { status: "Oxen",     count: data?.total_ox },
+  ];
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
-      <div className="relative overflow-hidden rounded-[32px] h-[300px] lg:h-[360px] border border-white/10 shadow-2xl group">
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      {/* ─── Header strip ─── */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-end justify-between gap-4"
+      >
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-saffron/10 border border-saffron/20">
+              <Sparkles className="w-2.5 h-2.5 text-saffron" strokeWidth={2} />
+              <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-saffron">Overview</span>
+            </span>
+          </div>
+          <h1 className="text-[1.65rem] font-semibold text-foreground leading-tight tracking-[-0.022em]">
+            Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"} — <span className="metric text-foreground"><AnimatedNumber value={data?.total_cattle ?? 0} /></span> cattle monitored
+          </h1>
+        </div>
+        <div className="hidden md:flex items-center gap-2 text-[0.78rem] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+            Live
+          </span>
+          <span className="text-border">·</span>
+          <span>Updated just now</span>
+        </div>
+      </motion.div>
 
-        {/* Background Image */}
-        <img
-          src="https://t4.ftcdn.net/jpg/12/55/70/67/360_F_1255706772_VN5ObaaNkgoTLgtAIqiBmpZFTLC45EO8.jpg"
-          alt="Gaushala"
-          className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-105 transition-transform duration-700"
+      {/* ─── KPI row ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard
+          icon={<CowIcon size={16} strokeWidth={1.6} />}
+          label="Total herd"
+          value={data?.total_cattle}
+          hint={`${data?.total_female_cattle ?? 0} ♀ · ${data?.total_male_cattle ?? 0} ♂`}
+          trend={{ value: 4.2, positive: true }}
+          index={0}
+          onClick={() => navigate("/list-cattle/all")}
         />
-
-        {/* Main Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#071021]/95 via-[#0b1324]/85 to-[#0b1324]/40" />
-
-        {/* Glow Effects */}
-        <div className="absolute -top-16 right-0 w-72 h-72 bg-orange-400/20 blur-3xl rounded-full" />
-        <div className="absolute -bottom-20 left-0 w-72 h-72 bg-amber-300/10 blur-3xl rounded-full" />
-
-        {/* Grid Texture */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:32px_32px]" />
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-between h-full p-6 lg:p-10">
-
-          {/* Top Section */}
-          <div className="flex items-start justify-between gap-4">
-
-            <div className="inline-flex items-center gap-2 backdrop-blur-xl bg-white/10 border border-white/10 rounded-full px-4 py-2">
-              <div className="w-2 h-2 rounded-full bg-orange-300" />
-              <span className="text-[11px] lg:text-xs uppercase tracking-[0.25em] text-orange-100 font-semibold">
-                Shree Somnath Temple Trust Gaushala
-              </span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 backdrop-blur-xl">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-sm font-medium text-emerald-200">
-                Active Monitoring
-              </span>
-            </div>
-
-          </div>
-
-          {/* Bottom Content */}
-          <div className="max-w-3xl">
-            <h1 className="text-3xl lg:text-5xl font-black text-white leading-tight tracking-tight mb-4">
-              Gir Cattle
-              <span className="block bg-gradient-to-r from-orange-200 via-orange-300 to-yellow-200 bg-clip-text text-transparent">
-                Management System
-              </span>
-            </h1>
-
-            <p className="text-sm lg:text-base leading-relaxed text-white/70 max-w-2xl">
-              Monitoring{" "}
-              <span className="text-white font-semibold">201 active cattle</span>{" "}
-              while maintaining lifecycle records for{" "}
-              <span className="text-orange-300 font-semibold">
-                404 total registered cattle
-              </span>
-              , including health tracking, breeding analytics, and milk production management.
-            </p>
-
-          </div>
-        </div>
+        <KPICard
+          icon={<MilkDrop size={16} strokeWidth={1.6} />}
+          label="Milking"
+          value={data?.total_milking_cow}
+          hint={`${kpiData.totalMilkToday} L/day`}
+          trend={{ value: 8.1, positive: true }}
+          index={1}
+          onClick={() => navigate("/list-cattle/milking")}
+        />
+        <KPICard
+          icon={<PregnantIcon size={16} strokeWidth={1.6} />}
+          label="Pregnant"
+          value={data?.total_pregnant_cow}
+          hint="Expecting calves"
+          index={2}
+        />
+        <KPICard
+          icon={<BabyIcon size={16} strokeWidth={1.6} />}
+          label="Calves"
+          value={(data?.total_male_calf ?? 0) + (data?.total_female_calf ?? 0)}
+          hint={`${data?.total_female_calf ?? 0} ♀ · ${data?.total_male_calf ?? 0} ♂`}
+          index={3}
+        />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div onClick={() => navigate("/list-cattle/all")} className="cursor-pointer">
-          <KPICard icon={<Flower2 className="w-5 h-5 text-white" />} label="Total Herd" value={data?.total_cattle}
-            subtitle={`${data?.total_female_cattle}F / ${data?.total_male_cattle}M`} gradient="bg-gradient-to-br from-saffron to-saffron-dark" />
-        </div>
-        <div onClick={() => navigate("/list-cattle/milking")} className="cursor-pointer">
-          <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={data?.total_milking_cow}
-            subtitle={`${kpiData.totalMilkToday}L/day total`} gradient="bg-gradient-to-br from-navy to-navy-dark" />
-        </div>
-        <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={data?.total_pregnant_cow}
-          subtitle="Expecting calves" gradient="bg-gradient-to-br from-pink-500 to-pink-700" />
-        <KPICard icon={<Heart className="w-5 h-5 text-white" />} label="Calves" value={data?.total_male_calf + data?.total_female_calf}
-          subtitle={`${data?.total_female_calf}F / ${data?.total_male_calf}M`} gradient="bg-gradient-to-br from-cyan-500 to-cyan-700" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Area Chart Card */}
-        <div className="lg:col-span-2 h-full relative overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-11 h-11 rounded-2xl bg-orange-50 flex items-center justify-center border border-orange-100 shadow-sm">
-              <TrendingUp className="w-5 h-5 text-saffron" />
+      {/* ─── Main charts ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="surface p-6 flex flex-col"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow">Production</p>
+              <h3 className="text-[1.05rem] font-semibold text-foreground tracking-[-0.01em] mt-1.5">Monthly milk output</h3>
             </div>
-            <h3 className="text-lg font-bold text-slate-800">
-              Monthly Milk Production (Liters)
-            </h3>
-            <button onClick={() => setFsChart(true)} className="ml-auto p-1.5 rounded-lg hover:bg-orange-50 transition-colors" title="Full Screen"><Maximize2 className="w-4 h-4 text-saffron/50 hover:text-saffron" /></button>
-          </div>
-
-          {milkAvg != null && <p className="text-xs text-slate-400 -mt-4 mb-4">Average: <span className="font-semibold text-navy">{milkAvg} L</span></p>}
-
-          <ResponsiveContainer width="100%" height={380}>
-            <AreaChart
-              data={milkMonthly}
-              margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-            >
-              <defs>
-                <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis
-                dataKey="month"
-                tick={{ fontSize: 12, fill: "#64748b" }}
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={60}
-                axisLine={false}
-                tickLine={false}
-                dy={10}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: "#64748b" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "14px",
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-                  fontSize: "12px",
-                  backgroundColor: "rgba(255, 255, 255, 0.95)"
-                }}
-              />
-              {milkAvg != null && <ReferenceLine y={milkAvg} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${milkAvg} L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 11 }} />}
-              <Area
-                type="monotone"
-                dataKey="total_milk"
-                stroke="#FF6B00"
-                strokeWidth={3}
-                fill="url(#milkG)"
-                activeDot={{ r: 6, strokeWidth: 0, fill: "#FF6B00" }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Pie Chart Card */}
-        <div className="h-full flex flex-col relative overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg">
-          {/* Decorative Background */}
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-200/30 rounded-full blur-3xl" />
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl" />
-
-          {/* Header */}
-          <div className="relative flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-navy to-blue-900 flex items-center justify-center shadow-md">
-                <Users className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-3 text-[0.72rem]">
+              {milkAvg != null && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-px bg-muted-foreground" />
+                  <span className="text-muted-foreground">Avg <span className="text-foreground font-medium metric">{milkAvg} L</span></span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-0.5 rounded bg-saffron" />
+                <span className="text-muted-foreground">Output</span>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">
-                  Herd Status
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Live cattle distribution overview
-                </p>
-              </div>
-            </div>
-            {/* Total Badge */}
-            <div className="px-3 py-1.5 rounded-xl bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
-              Total: {data?.total_cattle}
             </div>
           </div>
 
-          {/* Chart */}
-          <div className="relative flex-1 flex flex-col justify-center">
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
+          <div className="flex-1 min-h-[260px] mt-5 -mx-2">
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={milkMonthly} margin={{ top: 6, right: 12, left: 12, bottom: 0 }}>
                 <defs>
-                  <filter id="shadow">
-                    <feDropShadow dx="0" dy="3" stdDeviation="4" floodOpacity="0.15" />
-                  </filter>
+                  <linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#DC4F0A" stopOpacity={0.16} />
+                    <stop offset="100%" stopColor="#DC4F0A" stopOpacity={0} />
+                  </linearGradient>
                 </defs>
+                <CartesianGrid strokeDasharray="2 4" vertical={false} />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} dy={6} />
+                <YAxis axisLine={false} tickLine={false} width={36} />
+                <Tooltip cursor={{ stroke: "#DC4F0A", strokeWidth: 1, strokeDasharray: "2 2" }} />
+                <Area
+                  type="monotone"
+                  dataKey="total_milk"
+                  stroke="#DC4F0A"
+                  strokeWidth={2}
+                  fill="url(#milkG)"
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }}
+                  animationDuration={1200}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.4 }}
+          className="surface p-6 flex flex-col"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="eyebrow">Distribution</p>
+              <h3 className="text-[1.05rem] font-semibold text-foreground tracking-[-0.01em] mt-1.5">Herd by status</h3>
+            </div>
+            <span className="text-[0.72rem] text-muted-foreground metric"><AnimatedNumber value={data?.total_cattle} /> total</span>
+          </div>
+
+          <div className="relative flex-1 min-h-[180px] mt-3">
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
                 <Pie
                   data={statusDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={65}
-                  outerRadius={95}
-                  paddingAngle={4}
-                  dataKey="count"
-                  nameKey="status"
-                  stroke="transparent"
-                  filter="url(#shadow)"
+                  cx="50%" cy="50%"
+                  innerRadius={50} outerRadius={74}
+                  paddingAngle={2} dataKey="count" nameKey="status"
+                  stroke="none"
+                  animationDuration={1200}
                 >
                   {statusDistribution.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={STATUS_COLORS[i]}
-                      className="hover:opacity-80 transition-all duration-300 cursor-pointer"
-                    />
+                    <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "14px",
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-                    fontSize: "12px",
-                  }}
-                />
+                <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-
-            {/* Center Info */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
-              <h2 className="text-3xl font-black text-slate-800">
-                {data?.total_cattle}
-              </h2>
-              <p className="text-xs tracking-wide uppercase text-slate-500 font-medium">
-                Total Cattle
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <p className="text-[1.6rem] font-semibold text-foreground metric leading-none">
+                <AnimatedNumber value={data?.total_cattle} />
               </p>
+              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground mt-1.5">cattle</p>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 mt-6">
+          <div className="space-y-1.5 mt-5 pt-4 border-t border-border">
             {statusDistribution.map((s, i) => (
-              <div
+              <motion.div
                 key={s.status}
-                className="group flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white/70 backdrop-blur-sm px-4 py-3 hover:shadow-md hover:border-slate-300 transition-all duration-300 cursor-default"
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.04 }}
+                className="flex items-center justify-between text-[0.82rem]"
               >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full shadow-sm"
-                    style={{ backgroundColor: STATUS_COLORS[i] }}
-                  />
-                  <span className="text-sm font-medium text-slate-700">
-                    {s.status}
-                  </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length] }} />
+                  <span className="text-muted-foreground truncate">{s.status}</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-base font-bold text-slate-900">
-                    {s.count}
-                  </p>
-                </div>
-              </div>
+                <span className="font-semibold text-foreground metric">{s.count ?? 0}</span>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
+      {/* ─── Insight row ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-saffron/10 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-5 h-5 text-saffron" />
-            <h3>Source Breakdown</h3>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="surface p-6 flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <p className="eyebrow">Source breakdown</p>
+            <span className="text-[0.7rem] text-muted-foreground">by acquisition</span>
           </div>
-          {/* <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={kpiData.sourceDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="source" tick={{ fontSize: 9 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {kpiData.sourceDistribution.map((_, i) => (
-                  <Cell key={i} fill={SOURCE_COLORS[i]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer> */}
-          <ResponsiveContainer width="100%" height={160}>
-            {/* Fallback to an empty array so Recharts doesn't complain during loading */}
-            <BarChart data={data?.source_breakdown || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="acquisition_type" tick={{ fontSize: 9 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-
-              {/* Corrected dataKey to match your API response */}
-              <Bar dataKey="total_cattle" radius={[6, 6, 0, 0]}>
-                {/* Added safe optional chaining (?.) before map */}
-                {data?.source_breakdown?.map((entry, i) => (
-                  <Cell
-                    key={`cell-${i}`}
-                    /* Added modulo (%) to prevent crashing if there are more bars than colors */
-                    fill={SOURCE_COLORS[i % SOURCE_COLORS.length]}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-xl border border-saffron/10 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Scale className="w-5 h-5 text-navy" />
-            <h3>Generations</h3>
+          <div className="flex-1 min-h-[140px] -mx-2">
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={data?.source_breakdown || []} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 4" vertical={false} />
+                <XAxis dataKey="acquisition_type" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={40} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} width={28} />
+                <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                <Bar dataKey="total_cattle" radius={[3, 3, 0, 0]} maxBarSize={36} animationDuration={1200}>
+                  {(data?.source_breakdown ?? []).map((_, i) => (
+                    <Cell key={i} fill={SOURCE_COLORS[i % SOURCE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            {/* Fallback to an empty array so Recharts doesn't complain during loading */}
-            <BarChart data={data?.generation || []} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+        </motion.div>
 
-              {/* Fix 1: Changed dataKey from "gen" to "generation" */}
-              <YAxis dataKey="generation" type="category" tick={{ fontSize: 9 }} width={90} />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.4 }}
+          className="surface p-6 flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <p className="eyebrow">Generations</p>
+            <span className="text-[0.7rem] text-muted-foreground">foundation → F4</span>
+          </div>
+          <div className="flex-1 min-h-[140px] -mx-2">
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={data?.generation || []} layout="vertical" margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 4" horizontal={false} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                <YAxis dataKey="generation" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} width={70} />
+                <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                <Bar dataKey="total_cattle" radius={[0, 3, 3, 0]} maxBarSize={14} animationDuration={1200}>
+                  {(data?.generation ?? []).map((_, i) => (
+                    <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
 
-              <Tooltip />
-
-              {/* Fix 2: Changed dataKey from "count" to "total_cattle" */}
-              <Bar dataKey="total_cattle" radius={[0, 6, 6, 0]}>
-
-                {/* Fix 3: Changed the mapping source to match your actual data */}
-                {data?.generation?.map((entry, i) => (
-                  <Cell
-                    key={`cell-${i}`}
-                    fill={GEN_COLORS[i % GEN_COLORS.length]}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-xl border border-saffron/10 overflow-hidden">
-          <div className="h-32">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.4 }}
+          className="surface overflow-hidden flex flex-col"
+        >
+          <div className="relative h-32 overflow-hidden">
             <ImageWithFallback src={herdImage} alt="Herd" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <div className="absolute bottom-3 left-5 right-5">
+              <p className="text-[0.6rem] uppercase tracking-wider text-white/70 font-medium">Quick insight</p>
+              <p className="text-white text-[0.95rem] font-medium tracking-tight">Avg per cow</p>
+            </div>
           </div>
-          <div className="p-4 space-y-2">
+          <div className="p-4 space-y-2.5 flex-1">
             {[
-              { icon: <Droplets className="w-3.5 h-3.5 text-saffron" />, l: "Avg Milk/Cow", v: `${data?.average_milk_by_per_cattle.average_milk_by_per_cattle}L/day` },
-              { icon: <Shield className="w-3.5 h-3.5 text-green-500" />, l: "Top Breed Score", v: `${data?.top_10_fit_cattle[0].total_score}/10` },
-            ].map(s => (
-              <div key={s.l} className="flex items-center justify-between py-1 border-b border-saffron/5 last:border-0">
-                <div className="flex items-center gap-2">
-                  {s.icon}
-                  <span style={{ fontSize: '0.78rem' }} className="text-muted-foreground">{s.l}</span>
+              { icon: <Drop size={13} strokeWidth={1.8} />, l: "Avg milk / cow / day", v: `${data?.average_milk_by_per_cattle?.average_milk_by_per_cattle ?? 0} L` },
+              { icon: <Shield size={13} strokeWidth={1.8} />, l: "Top breed score", v: `${data?.top_10_fit_cattle?.[0]?.total_score ?? 0}/10` },
+              { icon: <Activity size={13} strokeWidth={1.8} />, l: "Avg per cow · total", v: `${data?.average_milk_by_per_cattle?.average_milk_by_per_cattle ?? 0} L` },
+            ].map((s, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.45 + i * 0.05 }}
+                className="flex items-center justify-between text-[0.8rem]"
+              >
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="text-saffron">{s.icon}</span>
+                  <span>{s.l}</span>
                 </div>
-                <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{s.v}</span>
-              </div>
+                <span className="font-semibold text-foreground metric">{s.v}</span>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        {/* Top Milking Cows */}
-        <div className="overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-lg shadow-orange-100/50">
-          <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-white">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-                <Droplets className="w-5 h-5" />
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg">Top Milking Cows</h3>
-                <p className="text-xs text-orange-100">
-                  Highest milk production leaderboard
-                </p>
-              </div>
+      {/* ─── Leaderboards ─── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.4 }}
+          className="surface overflow-hidden flex flex-col"
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-2.5">
+              <MilkDrop size={14} className="text-saffron" strokeWidth={1.6} />
+              <h3 className="text-[0.95rem] font-semibold text-foreground tracking-[-0.01em]">Top milkers</h3>
             </div>
+            <button
+              onClick={() => navigate("/list-cattle/milking")}
+              className="text-[0.75rem] text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-0.5 group"
+            >
+              View all
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </button>
           </div>
-
-          <div className="p-4 space-y-3">
-            {data?.top_10_milking_cattle.map((cow, i) => (
-              <div
+          <div className="flex-1">
+            {(data?.top_10_milking_cattle ?? []).slice(0, 6).map((cow, i) => (
+              <motion.button
                 key={cow.id ?? i}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.45 + i * 0.04, ease: [0.16, 1, 0.3, 1] }}
                 onClick={() => setSelectedCow(cow)}
-                className="
-            group
-            flex items-center gap-4
-            rounded-2xl
-            border border-gray-100
-            bg-gradient-to-r from-white to-orange-50/40
-            p-4
-            cursor-pointer
-            hover:shadow-xl
-            hover:-translate-y-1
-            transition-all duration-300
-          "
+                whileHover={{ x: 2 }}
+                className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-muted/40 transition-colors text-left group border-b border-border/40 last:border-0"
               >
-                {/* Rank */}
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
-                    <SiHappycow size={32} className="text-orange-600" />
-                  </div>
-
-                  <div className="
-              absolute -top-2 -right-2
-              w-6 h-6 rounded-full
-              bg-gradient-to-r from-orange-500 to-amber-500
-              text-white text-xs font-bold
-              flex items-center justify-center
-              shadow-lg
-            ">
-                    {i + 1}
-                  </div>
+                <span className="w-5 text-[0.7rem] font-medium text-muted-foreground/40 metric">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="w-8 h-8 rounded-md bg-saffron/10 text-saffron ring-1 ring-saffron/20 flex items-center justify-center shrink-0">
+                  <CowIcon size={16} strokeWidth={1.6} />
                 </div>
-
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold truncate">
-                    {cow.name}
-                  </h4>
-
-                  <p className="text-xs text-muted-foreground">
-                    #{cow.tagNumber} • Gen {cow.generation}
+                  <p className="text-[0.88rem] font-medium text-foreground truncate leading-tight">{cow.name}</p>
+                  <p className="text-[0.7rem] text-muted-foreground tabular">
+                    {cow.tagNumber} · Gen {cow.generation}
                   </p>
                 </div>
-
-                <div className="text-right">
-                  <div className="
-              px-3 py-1
-              rounded-full
-              bg-orange-100
-              text-orange-700
-              font-bold
-              text-sm
-            ">
-                    {cow.total_milk} L
-                  </div>
-
-                  <p className="text-[10px] mt-1 text-muted-foreground">
-                    Total Milk
-                  </p>
+                <div className="text-right shrink-0">
+                  <p className="text-[0.92rem] font-semibold text-foreground metric">{cow.total_milk} L</p>
+                  <p className="text-[0.62rem] text-muted-foreground uppercase tracking-wider">total</p>
                 </div>
-              </div>
+                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-saffron group-hover:translate-x-0.5 transition-all shrink-0" />
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Top Breed Scores */}
-        <div className="overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-lg shadow-blue-100/50">
-          <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-5 text-white">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-                <Shield className="w-5 h-5" />
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg">
-                  Top Breed Scores
-                </h3>
-
-                <p className="text-xs text-blue-100">
-                  Highest breed fitness ranking
-                </p>
-              </div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45, duration: 0.4 }}
+          className="surface overflow-hidden flex flex-col"
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-2.5">
+              <Shield size={14} className="text-navy dark:text-blue-300" strokeWidth={1.6} />
+              <h3 className="text-[0.95rem] font-semibold text-foreground tracking-[-0.01em]">Top breed scores</h3>
             </div>
+            <button
+              onClick={() => navigate("/genealogy")}
+              className="text-[0.75rem] text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-0.5 group"
+            >
+              View all
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </button>
           </div>
-
-          <div className="p-4 space-y-3">
-            {data?.top_10_fit_cattle.map((cow, i) => (
-              <div
+          <div className="flex-1">
+            {(data?.top_10_fit_cattle ?? []).slice(0, 6).map((cow, i) => (
+              <motion.button
                 key={cow.id ?? i}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + i * 0.04, ease: [0.16, 1, 0.3, 1] }}
                 onClick={() => setSelectedCow(cow)}
-                className="
-            group
-            flex items-center gap-4
-            rounded-2xl
-            border border-gray-100
-            bg-gradient-to-r from-white to-blue-50/40
-            p-4
-            cursor-pointer
-            hover:shadow-xl
-            hover:-translate-y-1
-            transition-all duration-300
-          "
+                whileHover={{ x: 2 }}
+                className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-muted/40 transition-colors text-left group border-b border-border/40 last:border-0"
               >
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center">
-                    <SiHappycow size={32} className="text-blue-700" />
-                  </div>
-
-                  <div className="
-              absolute -top-2 -right-2
-              w-6 h-6 rounded-full
-              bg-gradient-to-r from-blue-700 to-indigo-700
-              text-white text-xs font-bold
-              flex items-center justify-center
-              shadow-lg
-            ">
-                    {i + 1}
-                  </div>
+                <span className="w-5 text-[0.7rem] font-medium text-muted-foreground/40 metric">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="w-8 h-8 rounded-md bg-navy/10 text-navy flex items-center justify-center shrink-0 ring-1 ring-navy/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-500/20">
+                  <Shield size={16} strokeWidth={1.6} />
                 </div>
-
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold truncate">
-                    {cow.name}
-                  </h4>
-
-                  <p className="text-xs text-muted-foreground">
-                    #{cow.tag_number} • Gen {cow.generation}
-                  </p>
-
-                  <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="
-                  h-full rounded-full
-                  bg-gradient-to-r
-                  from-blue-600
-                  via-indigo-500
-                  to-orange-400
-                "
-                      style={{
-                        width: `${(cow.total_score / 10) * 100}%`,
-                      }}
-                    />
+                  <p className="text-[0.88rem] font-medium text-foreground truncate leading-tight">{cow.name}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-navy to-saffron"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(cow.total_score / 10) * 100}%` }}
+                        transition={{ delay: 0.6 + i * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                      />
+                    </div>
+                    <span className="text-[0.7rem] text-muted-foreground metric shrink-0">{Number(cow.total_score).toFixed(1)}/10</span>
                   </div>
                 </div>
-
-                <div className="
-            w-14 h-14 rounded-full
-            bg-gradient-to-br
-            from-blue-700
-            to-indigo-700
-            text-white
-            flex flex-col
-            items-center
-            justify-center
-            shadow-lg
-          ">
-                  <span className="font-bold text-lg leading-none">
-                    {Number(cow.total_score).toFixed(2)}
-                  </span>
-
-                  <span className="text-[9px] opacity-80">
-                    /10
-                  </span>
-                </div>
-              </div>
+                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-saffron group-hover:translate-x-0.5 transition-all shrink-0" />
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <AnimatePresence>
@@ -658,37 +516,6 @@ export function Dashboard() {
           <CowCard cow={selectedCow} onClose={() => setSelectedCow(null)} onSelectCow={setSelectedCow} />
         )}
       </AnimatePresence>
-
-      {fsChart && (
-        <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col" onClick={() => setFsChart(false)}>
-          <div className="flex items-center justify-between px-6 py-4 shrink-0">
-            <h2 className="text-white text-lg font-bold">Herd Monthly Milk Production (Liters)</h2>
-            <button onClick={() => setFsChart(false)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5 text-white" /></button>
-          </div>
-          <div className="flex-1 p-6" onClick={e => e.stopPropagation()}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={milkMonthly} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
-                <defs>
-                  <linearGradient id="fsMilkG" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.5} />
-                    <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} angle={-45} axisLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", fontSize: "13px" }} labelStyle={{ color: "#fff" }} />
-                {milkAvg != null && <ReferenceLine y={milkAvg} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Average ${milkAvg} L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 13, fontWeight: "bold" }} />}
-                <Area type="monotone" dataKey="total_milk" stroke="#FF6B00" strokeWidth={3} fill="url(#fsMilkG)" dot={{ r: 3, fill: "#FF6B00" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
-            <div className="flex items-center gap-2"><div className="w-4 h-1 rounded" style={{ backgroundColor: "#FF6B00" }} /><span className="text-white/70 text-sm">Total Milk Per Month</span></div>
-            {milkAvg != null && <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded" style={{ backgroundColor: "#1B3A6B", border: "1px dashed #1B3A6B" }} /><span className="text-white/70 text-sm">Average ({milkAvg} L)</span></div>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { motion } from "motion/react";
 import { Plus, Search, Edit2, Save, X, ChevronDown, ChevronUp, Check, AlertTriangle, Upload, ChevronLeft, ChevronRight, Droplets } from "lucide-react";
 import { cows, Cow, CowStatus, CowSource } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -69,9 +70,9 @@ const EMPTY_FORM: CowForm = {
 };
 
 const inputCls =
-  "w-full h-9 rounded-md border border-input bg-[#FFF8F0] px-3 py-1 text-sm text-foreground outline-none transition-[color,box-shadow] focus:ring-[3px] focus:ring-saffron/30 focus:border-saffron placeholder:text-muted-foreground/60 disabled:opacity-50 disabled:cursor-not-allowed";
-const labelCls = "block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5";
-const sectionCls = "bg-white rounded-xl border border-saffron/10 p-5 space-y-4";
+  "w-full h-9 rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/15 placeholder:text-muted-foreground/60 disabled:opacity-50 disabled:cursor-not-allowed";
+const labelCls = "block text-[0.72rem] font-medium text-muted-foreground uppercase tracking-wider mb-1.5";
+const sectionCls = "surface p-5 space-y-4";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -84,9 +85,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SaveBanner({ message }: { message: string }) {
   return (
-    <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 text-green-800 rounded-lg px-4 py-3 mb-4">
-      <Check className="w-4 h-4 text-green-600 shrink-0" />
-      <p style={{ fontSize: "0.82rem" }}>{message}</p>
+    <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200 dark:border-emerald-500/20 rounded-lg px-4 py-3 mb-4">
+      <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-300 shrink-0" />
+      <p className="text-[0.85rem] font-medium">{message}</p>
     </div>
   );
 }
@@ -134,23 +135,23 @@ function PhotoUploadField({
     <div>
       <label className={labelCls}>Photo</label>
       {imageUrl ? (
-        <div className="flex items-center gap-3 bg-muted/20 rounded-lg border border-saffron/10 p-3">
+        <div className="flex items-center gap-3 surface-soft p-3">
           <img
             src={imageUrl}
             alt="preview"
-            className="w-16 h-16 rounded-lg object-cover border border-saffron/20 shrink-0"
+            className="w-16 h-16 rounded-lg object-cover ring-1 ring-saffron/20 shrink-0"
             onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-foreground font-medium" style={{ fontSize: "0.78rem" }}>Photo selected</p>
-            <p className="text-muted-foreground truncate" style={{ fontSize: "0.68rem" }}>
+            <p className="text-foreground font-medium text-[0.82rem]">Photo selected</p>
+            <p className="text-muted-foreground truncate text-[0.7rem]">
               {imageUrl.startsWith("blob:") ? "Uploaded from device" : imageUrl}
             </p>
           </div>
           <button
             type="button"
             onClick={clearImage}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+            className="p-1.5 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
             title="Remove photo"
           >
             <X className="w-4 h-4" />
@@ -166,16 +167,16 @@ function PhotoUploadField({
                 onDrop={handleDrop}
                 onClick={() => inputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
-                  dragging ? "border-saffron bg-saffron/5" : "border-saffron/20 hover:border-saffron/40 hover:bg-muted/20"
+                  dragging ? "border-saffron bg-saffron/5" : "border-border hover:border-saffron/40 hover:bg-muted/30"
                 }`}
               >
                 <div className="w-10 h-10 rounded-full bg-saffron/10 flex items-center justify-center">
                   <Upload className="w-5 h-5 text-saffron" />
                 </div>
-                <p className="text-foreground font-medium" style={{ fontSize: "0.82rem" }}>
+                <p className="text-foreground font-medium text-[0.85rem]">
                   {dragging ? "Drop to upload" : "Click or drag & drop to upload"}
                 </p>
-                <p className="text-muted-foreground" style={{ fontSize: "0.7rem" }}>JPG, PNG, WEBP · Max 5 MB</p>
+                <p className="text-muted-foreground text-[0.72rem]">JPG, PNG, WEBP · Max 5 MB</p>
                 <input
                   ref={inputRef}
                   type="file"
@@ -187,8 +188,7 @@ function PhotoUploadField({
               <button
                 type="button"
                 onClick={() => setUrlMode(true)}
-                className="mt-2 text-muted-foreground hover:text-saffron transition-colors"
-                style={{ fontSize: "0.72rem" }}
+                className="mt-2 text-muted-foreground hover:text-saffron transition-colors text-[0.72rem]"
               >
                 Or enter a URL instead →
               </button>
@@ -205,8 +205,7 @@ function PhotoUploadField({
               <button
                 type="button"
                 onClick={() => setUrlMode(false)}
-                className="mt-2 text-muted-foreground hover:text-saffron transition-colors"
-                style={{ fontSize: "0.72rem" }}
+                className="mt-2 text-muted-foreground hover:text-saffron transition-colors text-[0.72rem]"
               >
                 ← Upload a file instead
               </button>
@@ -276,22 +275,19 @@ function MilkCalendarSection({
     (viewYear === TODAY.getFullYear() && viewMonth >= TODAY.getMonth());
 
   return (
-    <div className="bg-white rounded-xl border border-saffron/10 overflow-hidden">
+    <div className="surface overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between p-5 hover:bg-muted/20 transition-colors"
+        className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-3">
           <Droplets className="w-4 h-4 text-saffron" />
-          <span className="font-medium text-foreground" style={{ fontSize: "0.9rem" }}>
+          <span className="font-medium text-foreground text-[0.92rem]">
             Daily Milk Log
           </span>
           {filledDays > 0 && (
-            <span
-              className="px-2 py-0.5 rounded-full bg-saffron/10 text-saffron font-semibold"
-              style={{ fontSize: "0.72rem" }}
-            >
+            <span className="chip chip-saffron text-[0.68rem]">
               {totalLitres.toFixed(1)} L this month
             </span>
           )}
@@ -302,43 +298,36 @@ function MilkCalendarSection({
       </button>
 
       {open && (
-        <div className="border-t border-saffron/10">
-          {/* Month navigation */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-saffron/5">
+        <div className="border-t border-border">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border">
             <button
               type="button"
               onClick={prevMonth}
-              className="p-1.5 rounded-lg hover:bg-muted/30 transition-colors"
+              className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors"
             >
-              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="font-medium text-foreground" style={{ fontSize: "0.85rem" }}>
+            <span className="font-medium text-foreground text-[0.88rem] tabular">
               {MONTH_NAMES[viewMonth]} {viewYear}
             </span>
             <button
               type="button"
               onClick={nextMonth}
               disabled={isNextMonthFuture}
-              className="p-1.5 rounded-lg hover:bg-muted/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Day column headers */}
           <div className="grid grid-cols-7 gap-1 px-4 pt-3 pb-1">
             {DAY_LABELS.map(d => (
-              <div
-                key={d}
-                className="text-center text-muted-foreground uppercase font-medium"
-                style={{ fontSize: "0.6rem" }}
-              >
+              <div key={d} className="text-center text-muted-foreground uppercase font-medium text-[0.6rem]">
                 {d}
               </div>
             ))}
           </div>
 
-          {/* Day cells */}
           <div className="grid grid-cols-7 gap-1 px-4 pb-4">
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
               <div key={`pad-${i}`} />
@@ -357,20 +346,15 @@ function MilkCalendarSection({
               return (
                 <div
                   key={day}
-                  className={`rounded-lg border flex flex-col items-center p-1 gap-0.5 transition-colors ${
+                  className={`rounded-md border flex flex-col items-center p-1 gap-0.5 transition-colors ${
                     isToday
                       ? "border-saffron/50 bg-saffron/5"
                       : hasValue
-                        ? "border-green-200 bg-green-50/60"
-                        : "border-saffron/10 bg-muted/10"
+                        ? "border-emerald-200 bg-emerald-50/60 dark:bg-emerald-500/10"
+                        : "border-border bg-muted/30"
                   } ${future ? "opacity-30 pointer-events-none" : ""}`}
                 >
-                  <span
-                    className={`font-semibold leading-none ${
-                      isToday ? "text-saffron" : "text-muted-foreground"
-                    }`}
-                    style={{ fontSize: "0.58rem" }}
-                  >
+                  <span className={`font-semibold leading-none text-[0.58rem] ${isToday ? "text-saffron" : "text-muted-foreground"}`}>
                     {day}
                   </span>
                   <input
@@ -381,31 +365,27 @@ function MilkCalendarSection({
                     value={val}
                     onChange={e => setDay(day, e.target.value)}
                     placeholder="—"
-                    className="w-full text-center bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/30 focus:bg-white focus:rounded focus:ring-1 focus:ring-saffron/30"
-                    style={{ fontSize: "0.7rem", padding: "1px 0" }}
+                    className="w-full text-center bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/30 focus:bg-background focus:rounded focus:ring-1 focus:ring-saffron/30 text-[0.7rem] py-px"
                   />
                 </div>
               );
             })}
           </div>
 
-          {/* Summary strip */}
-          <div className="flex items-center gap-6 px-5 py-3 border-t border-saffron/10 bg-muted/10">
+          <div className="flex items-center gap-6 px-5 py-3 border-t border-border bg-muted/20">
             <div>
-              <p className="text-muted-foreground" style={{ fontSize: "0.65rem" }}>Month Total</p>
-              <p className="font-bold text-foreground" style={{ fontSize: "0.88rem" }}>
-                {totalLitres.toFixed(1)} L
-              </p>
+              <p className="eyebrow">Month Total</p>
+              <p className="font-semibold text-foreground text-[0.92rem] tabular">{totalLitres.toFixed(1)} L</p>
             </div>
-            <div className="w-px h-7 bg-saffron/10" />
+            <div className="w-px h-7 bg-border" />
             <div>
-              <p className="text-muted-foreground" style={{ fontSize: "0.65rem" }}>Daily Average</p>
-              <p className="font-bold text-foreground" style={{ fontSize: "0.88rem" }}>{avg} L</p>
+              <p className="eyebrow">Daily Average</p>
+              <p className="font-semibold text-foreground text-[0.92rem] tabular">{avg} L</p>
             </div>
-            <div className="w-px h-7 bg-saffron/10" />
+            <div className="w-px h-7 bg-border" />
             <div>
-              <p className="text-muted-foreground" style={{ fontSize: "0.65rem" }}>Days Logged</p>
-              <p className="font-bold text-foreground" style={{ fontSize: "0.88rem" }}>
+              <p className="eyebrow">Days Logged</p>
+              <p className="font-semibold text-foreground text-[0.92rem] tabular">
                 {filledDays} / {daysInMonth}
               </p>
             </div>
@@ -471,20 +451,17 @@ function BreedScoreSection({
   ).toFixed(1);
 
   return (
-    <div className="bg-white rounded-xl border border-saffron/10 overflow-hidden">
+    <div className="surface overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between p-5 hover:bg-muted/20 transition-colors"
+        className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="font-medium text-foreground" style={{ fontSize: "0.9rem" }}>
+          <span className="font-medium text-foreground text-[0.92rem]">
             Breed Score
           </span>
-          <span
-            className="px-2 py-0.5 rounded-full bg-saffron/10 text-saffron font-semibold"
-            style={{ fontSize: "0.72rem" }}
-          >
+          <span className="chip chip-saffron text-[0.7rem]">
             Avg {avg} / 10
           </span>
         </div>
@@ -492,16 +469,14 @@ function BreedScoreSection({
       </button>
 
       {open && (
-        <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border-t border-saffron/10 pt-4">
+        <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4">
           {BREED_TRAITS.map(trait => {
             const val = parseFloat(scores[trait.key] || "0");
             return (
               <div key={trait.key}>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className={labelCls + " mb-0"}>{trait.label}</label>
-                  <span className="text-saffron font-semibold" style={{ fontSize: "0.8rem" }}>
-                    {val.toFixed(1)}
-                  </span>
+                  <span className="text-saffron font-semibold text-[0.82rem] tabular">{val.toFixed(1)}</span>
                 </div>
                 <input
                   type="range"
@@ -510,7 +485,7 @@ function BreedScoreSection({
                   step="0.5"
                   value={scores[trait.key]}
                   onChange={e => onChange(trait.key, e.target.value)}
-                  className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-saffron cursor-pointer"
+                  className="w-full h-1.5 rounded-full appearance-none bg-muted accent-saffron cursor-pointer"
                 />
               </div>
             );
@@ -560,7 +535,7 @@ function CowFormFields({
     <form onSubmit={onSubmit} className="space-y-4">
       {/* Basic Information */}
       <div className={sectionCls}>
-        <h4 className="font-semibold text-foreground" style={{ fontSize: "0.9rem" }}>
+        <h4 className="font-semibold text-foreground text-[0.95rem]">
           Basic Information
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -681,7 +656,7 @@ function CowFormFields({
 
       {/* Health & Vaccination */}
       <div className={sectionCls}>
-        <h4 className="font-semibold text-foreground" style={{ fontSize: "0.9rem" }}>
+        <h4 className="font-semibold text-foreground text-[0.95rem]">
           Health & Vaccination
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -729,7 +704,7 @@ function CowFormFields({
       {/* Pregnancy Details */}
       {isPregnant && (
         <div className={sectionCls}>
-          <h4 className="font-semibold text-foreground" style={{ fontSize: "0.9rem" }}>
+          <h4 className="font-semibold text-foreground text-[0.95rem]">
             Pregnancy Details
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -776,10 +751,10 @@ function CowFormFields({
 
       {/* Deceased Details */}
       {isDeceased && (
-        <div className="bg-red-50 rounded-xl border border-red-100 p-5 space-y-4">
+        <div className="bg-red-50/60 dark:bg-red-500/5 rounded-xl border border-red-200/60 dark:border-red-500/20 p-5 space-y-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-red-500" />
-            <h4 className="font-semibold text-red-800" style={{ fontSize: "0.9rem" }}>
+            <h4 className="font-semibold text-red-800 dark:text-red-300 text-[0.92rem]">
               Passing Details
             </h4>
           </div>
@@ -827,21 +802,21 @@ function CowFormFields({
       <BreedScoreSection scores={form.breedScore} onChange={setBreedScore} />
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-1">
+      <div className="flex items-center justify-end gap-2 pt-1">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-saffron/20 text-muted-foreground hover:bg-muted/30 transition-colors text-sm"
+            className="h-9 px-4 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors text-[0.85rem] font-medium inline-flex items-center gap-2"
           >
-            <X className="w-4 h-4" /> Cancel
+            <X className="w-3.5 h-3.5" /> Cancel
           </button>
         )}
         <button
           type="submit"
-          className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md shadow-saffron/20 text-sm"
+          className="h-9 px-5 rounded-lg bg-foreground text-background font-medium hover:opacity-90 transition-opacity text-[0.85rem] inline-flex items-center gap-2"
         >
-          <Save className="w-4 h-4" />
+          <Save className="w-3.5 h-3.5" />
           {submitLabel}
         </button>
       </div>
@@ -953,9 +928,8 @@ function EditCowPanel() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
-      {/* Cow List */}
-      <div className="lg:col-span-2 bg-white rounded-xl border border-saffron/10 overflow-hidden">
-        <div className="p-4 border-b border-saffron/10">
+      <div className="lg:col-span-2 surface overflow-hidden">
+        <div className="p-3 border-b border-border">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -972,54 +946,49 @@ function EditCowPanel() {
               key={cow.id}
               type="button"
               onClick={() => handleSelect(cow)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b border-saffron/5 last:border-0
-                ${selectedCow?.id === cow.id
-                  ? "bg-saffron/10 border-l-2 border-l-saffron"
-                  : "hover:bg-muted/30"
-                }`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors border-b border-border/60 last:border-0 ${
+                selectedCow?.id === cow.id
+                  ? "bg-saffron/5 border-l-2 border-l-saffron"
+                  : "hover:bg-muted/40"
+              }`}
             >
               <ImageWithFallback
                 src={cow.image}
                 alt={cow.name}
-                className="w-9 h-9 rounded-full object-cover shrink-0 border border-saffron/20"
+                className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-saffron/20"
               />
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate text-foreground" style={{ fontSize: "0.82rem" }}>
-                  {cow.name}
-                </p>
-                <p className="text-muted-foreground truncate" style={{ fontSize: "0.68rem" }}>
+                <p className="font-medium truncate text-foreground text-[0.85rem]">{cow.name}</p>
+                <p className="text-muted-foreground truncate text-[0.7rem] tabular">
                   {cow.tagNumber} · Gen {cow.generation} · {cow.gender}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <div className={`w-2 h-2 rounded-full ${statusDot[cow.status] ?? "bg-gray-400"}`} />
-                <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{cow.status}</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${statusDot[cow.status] ?? "bg-slate-400"}`} />
+                <span className="text-muted-foreground text-[0.7rem]">{cow.status}</span>
               </div>
             </button>
           ))}
           {filtered.length === 0 && (
-            <p className="text-center text-muted-foreground py-8" style={{ fontSize: "0.82rem" }}>
+            <p className="text-center text-muted-foreground py-8 text-[0.85rem]">
               No cows match your search.
             </p>
           )}
         </div>
       </div>
 
-      {/* Edit Form */}
       <div className="lg:col-span-3">
         {selectedCow ? (
           <div>
-            <div className="flex items-center gap-3 mb-4 bg-white rounded-xl border border-saffron/10 p-4">
+            <div className="flex items-center gap-3 mb-4 surface p-4">
               <ImageWithFallback
                 src={selectedCow.image}
                 alt={selectedCow.name}
-                className="w-12 h-12 rounded-full object-cover border-2 border-saffron/30"
+                className="w-11 h-11 rounded-full object-cover ring-2 ring-saffron/30"
               />
               <div>
-                <p className="font-semibold text-foreground" style={{ fontSize: "0.95rem" }}>
-                  {selectedCow.name}
-                </p>
-                <p className="text-muted-foreground" style={{ fontSize: "0.72rem" }}>
+                <p className="font-semibold text-foreground text-[0.95rem]">{selectedCow.name}</p>
+                <p className="text-muted-foreground text-[0.72rem] tabular">
                   {selectedCow.tagNumber} · {selectedCow.breed} · Gen {selectedCow.generation}
                 </p>
               </div>
@@ -1040,15 +1009,13 @@ function EditCowPanel() {
             />
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-saffron/10 flex flex-col items-center justify-center py-20 text-center px-6">
-            <div className="w-14 h-14 rounded-full bg-saffron/10 flex items-center justify-center mb-4">
-              <Edit2 className="w-6 h-6 text-saffron" />
+          <div className="surface py-20 flex flex-col items-center justify-center text-center px-6">
+            <div className="w-12 h-12 rounded-full bg-saffron/10 text-saffron ring-1 ring-saffron/20 flex items-center justify-center mb-4">
+              <Edit2 className="w-5 h-5" />
             </div>
-            <p className="font-medium text-foreground mb-1" style={{ fontSize: "0.95rem" }}>
-              Select a cow to edit
-            </p>
-            <p className="text-muted-foreground" style={{ fontSize: "0.8rem" }}>
-              Search and select a cow from the list on the left. You can update all details, status, health records, and more.
+            <p className="font-semibold text-foreground mb-1 text-[0.95rem]">Select a cow to edit</p>
+            <p className="text-muted-foreground text-[0.82rem] max-w-xs">
+              Search and pick a cow from the list. You can update all details, status, health records, and more.
             </p>
           </div>
         )}
@@ -1057,43 +1024,39 @@ function EditCowPanel() {
   );
 }
 
-// ─── Main Export ─────────────────────────────────────────────────────────────
-
 export function AdminHerd() {
   const [tab, setTab] = useState<Tab>("add");
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-foreground font-bold" style={{ fontSize: "1.4rem" }}>
-          Herd Management
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <p className="eyebrow">Administration</p>
+        <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em] mt-1">
+          Herd management
         </h1>
-        <p className="text-muted-foreground mt-0.5" style={{ fontSize: "0.82rem" }}>
+        <p className="text-[0.82rem] text-muted-foreground mt-1">
           Add new cows to the herd or update existing records, health details, and statuses.
         </p>
-      </div>
+      </motion.div>
 
-      {/* Tab Bar */}
-      <div className="flex gap-1 bg-muted/40 p-1 rounded-xl w-fit border border-saffron/10">
+      <div className="inline-flex p-0.5 rounded-md bg-muted border border-border">
         {(["add", "edit"] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`h-7 px-3 rounded text-[0.78rem] font-medium transition-colors inline-flex items-center gap-1.5 ${
               tab === t
-                ? "bg-white text-foreground shadow-sm border border-saffron/10"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {t === "add" ? (
-              <span className="flex items-center gap-2">
-                <Plus className="w-3.5 h-3.5" /> Add New Cow
-              </span>
+              <><Plus className="w-3 h-3" strokeWidth={2} /> Add new cow</>
             ) : (
-              <span className="flex items-center gap-2">
-                <Edit2 className="w-3.5 h-3.5" /> Edit Existing Cow
-              </span>
+              <><Edit2 className="w-3 h-3" strokeWidth={2} /> Edit existing</>
             )}
           </button>
         ))}

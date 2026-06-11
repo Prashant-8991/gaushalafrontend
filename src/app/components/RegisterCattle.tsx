@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router";
+import { motion } from "motion/react";
 import { ArrowLeft, CheckCircle, Loader2, AlertTriangle, Flower2, GitBranch, Shield, ChevronRight, ChevronLeft, ImagePlus, Trash2, Upload } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -94,11 +95,11 @@ export function RegisterCattle() {
   };
 
   return (
-    <div className="p-4 lg:p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-4 lg:p-6 max-w-2xl mx-auto space-y-4">
       <Header onBack={() => navigate(-1)} step={step} />
       <Progress step={step} />
       {result && <Toast result={result} />}
-      <div className="bg-white rounded-2xl border border-saffron/10 p-6 shadow-sm">
+      <div className="surface p-5">
         {step === 1 && <Step1 form={form} sf={sf} ageInMonths={ageInMonths} animalTypeOptions={animalTypeOptions} />}
         {step === 2 && <Step2 {...{ motherSearch, setMotherSearch, motherResults, motherOpen, setMotherOpen, fatherSearch, setFatherSearch, fatherResults, fatherOpen, setFatherOpen, form, selectParent, clearParent }} />}
         {step === 3 && <Step3 physical={physical} setPhysical={setPhysical} imageFiles={imageFiles} setImageFiles={setImageFiles} removeImageFile={removeImageFile} uploading={uploading} />}
@@ -109,88 +110,242 @@ export function RegisterCattle() {
 }
 
 function Header({ onBack, step }: { onBack: () => void; step: number }) {
-  return <div className="flex items-center gap-3"><button onClick={onBack} className="p-2 rounded-xl hover:bg-muted"><ArrowLeft className="w-5 h-5" /></button><div><h1 className="text-xl font-bold flex items-center gap-2"><Flower2 className="w-5 h-5 text-saffron" />Register Cattle</h1><p className="text-sm text-muted-foreground">Step {step} of 3</p></div></div>;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex items-center gap-2.5"
+    >
+      <button onClick={onBack} className="h-8 w-8 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" />
+      </button>
+      <div>
+        <p className="eyebrow">Administration</p>
+        <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em] flex items-center gap-2 mt-0.5">
+          <Flower2 className="w-5 h-5 text-saffron" strokeWidth={1.6} /> Register cattle
+        </h1>
+        <p className="text-[0.82rem] text-muted-foreground">Step {step} of 3</p>
+      </div>
+    </motion.div>
+  );
 }
+
 function Progress({ step }: { step: number }) {
-  return <div className="flex items-center gap-2">{[1,2,3].map(i => <div key={i} className={`flex-1 h-2 rounded-full ${step >= i ? "bg-saffron" : "bg-muted"}`} />)}</div>;
+  return (
+    <div className="flex items-center gap-1.5">
+      {[1,2,3].map(i => (
+        <div key={i} className={`flex-1 h-1 rounded-full transition-colors ${step >= i ? "bg-foreground" : "bg-border"}`} />
+      ))}
+    </div>
+  );
 }
+
 function Toast({ result }: { result: { success: boolean; message: string; tag_number?: string } }) {
-  return <div className={`rounded-xl border p-4 flex items-center gap-3 ${result.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>{result.success ? <CheckCircle className="w-5 h-5 text-green-600" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}<div><p className="font-medium">{result.message}</p>{result.tag_number && <p className="text-sm text-muted-foreground">Tag: {result.tag_number}</p>}</div></div>;
+  return (
+    <div className={`surface p-3 flex items-center gap-2.5 ${result.success ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+      {result.success
+        ? <CheckCircle className="w-3.5 h-3.5 text-success" />
+        : <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+      }
+      <div>
+        <p className="font-medium text-[0.88rem] text-foreground">{result.message}</p>
+        {result.tag_number && <p className="text-[0.78rem] text-muted-foreground font-mono">Tag: {result.tag_number}</p>}
+      </div>
+    </div>
+  );
 }
+
 function Nav({ step, setStep, loading, onSubmit, canNext }: { step: number; setStep: (s: number) => void; loading: boolean; onSubmit: () => void; canNext: boolean }) {
-  return <div className="flex items-center justify-between mt-8 pt-4 border-t border-saffron/10">{step > 1 ? <button onClick={() => setStep(step - 1)} className="px-4 py-2 rounded-lg border border-saffron/10 text-sm hover:bg-muted flex items-center gap-1"><ChevronLeft className="w-4 h-4" /> Back</button> : <div />}
-    <div className="flex items-center gap-3">{step < 3 && <button onClick={() => setStep(step + 1)} disabled={!canNext} className="px-5 py-2.5 rounded-lg bg-saffron text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5">Next <ChevronRight className="w-4 h-4" /></button>}{step === 3 && <button onClick={onSubmit} disabled={loading || !canNext} className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2">{loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Registering...</> : <><CheckCircle className="w-4 h-4" /> Register Cattle</>}</button>}</div></div>;
+  return (
+    <div className="flex items-center justify-between mt-8 pt-4 border-t border-border">
+      {step > 1
+        ? <button onClick={() => setStep(step - 1)} className="h-9 px-4 rounded-lg border border-border text-foreground text-[0.85rem] font-medium hover:bg-muted transition-colors inline-flex items-center gap-1.5">
+            <ChevronLeft className="w-3.5 h-3.5" /> Back
+          </button>
+        : <div />
+      }
+      <div className="flex items-center gap-2">
+        {step < 3 && (
+          <button onClick={() => setStep(step + 1)} disabled={!canNext} className="h-9 px-4 rounded-lg bg-foreground text-background text-[0.85rem] font-medium hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center gap-1.5">
+            Next <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {step === 3 && (
+          <button onClick={onSubmit} disabled={loading || !canNext} className="h-9 px-5 rounded-lg bg-foreground text-background text-[0.85rem] font-medium hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center gap-2">
+            {loading
+              ? <><div className="w-3.5 h-3.5 border-2 border-background/30 border-t-background rounded-full animate-spin" /> Registering…</>
+              : <><CheckCircle className="w-3.5 h-3.5" /> Register Cattle</>
+            }
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function Step1({ form, sf, ageInMonths, animalTypeOptions }: any) {
-  return <><h3 className="text-sm font-semibold text-saffron uppercase tracking-widest mb-4 flex items-center gap-2"><Flower2 className="w-4 h-4" /> Basic Information</h3>
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4"><F label="Cattle Name *" value={form.name} onChange={v => sf("name", v)} placeholder="e.g. Lakshmi" /><F label="Tag Number" value={form.tag_number} onChange={v => sf("tag_number", v)} placeholder="Auto-generated" /></div>
-      <div className="grid grid-cols-2 gap-4"><S label="Gender *" value={form.gender} onChange={v => sf("gender", v)} options={[{ v: "", l: "Select..." }, { v: "Female", l: "Female" }, { v: "Male", l: "Male" }]} /><F label="Date of Birth" value={form.date_of_birth} onChange={v => sf("date_of_birth", v)} type="date" /></div>
-      {form.gender && <S label={`Animal Type ${ageInMonths < 999 ? `(~${Math.floor(ageInMonths / 12)}y ${ageInMonths % 12}m)` : ""}`} value={form.animal_type} onChange={v => sf("animal_type", v)} options={[{ v: "", l: "Select..." }, ...animalTypeOptions.map((a: string) => ({ v: a, l: a }))]} />}
-      <div className="grid grid-cols-2 gap-4"><S label="Acquisition Type" value={form.acquisition_type} onChange={v => sf("acquisition_type", v)} options={[{ v: "", l: "Select..." }, ...ACQUISITION_TYPES.map(a => ({ v: a, l: a }))]} /><F label="Weight at Birth (kg)" value={form.weight_at_birth} onChange={v => sf("weight_at_birth", v)} type="number" placeholder="e.g. 25.5" /></div>
-      <S label="Brucellosis Status" value={form.brucellosis_status} onChange={v => sf("brucellosis_status", v)} options={[{ v: "UNKNOWN", l: "Unknown" }, { v: "NOT_VACCINATED", l: "Not Vaccinated" }, { v: "VACCINATED", l: "Vaccinated" }, { v: "NOT_APPLICABLE", l: "Not Applicable" }]} />
-      <div className="flex items-center gap-6"><label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" checked={form.is_pregnant} onChange={e => sf("is_pregnant", e.target.checked)} className="w-4 h-4 rounded border-saffron/30 text-saffron" /><span>Currently Pregnant</span></label><label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" checked={form.is_milking} onChange={e => sf("is_milking", e.target.checked)} className="w-4 h-4 rounded border-saffron/30 text-saffron" /><span>Currently Milking</span></label></div>
-    </div></>;
+  return (
+    <>
+      <h3 className="eyebrow mb-4 flex items-center gap-1.5"><Flower2 className="w-3.5 h-3.5 text-saffron" /> Basic information</h3>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <F label="Cattle Name *" value={form.name} onChange={v => sf("name", v)} placeholder="e.g. Lakshmi" />
+          <F label="Tag Number" value={form.tag_number} onChange={v => sf("tag_number", v)} placeholder="Auto-generated" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <S label="Gender *" value={form.gender} onChange={v => sf("gender", v)} options={[{ v: "", l: "Select…" }, { v: "Female", l: "Female" }, { v: "Male", l: "Male" }]} />
+          <F label="Date of Birth" value={form.date_of_birth} onChange={v => sf("date_of_birth", v)} type="date" />
+        </div>
+        {form.gender && (
+          <S
+            label={`Animal Type ${ageInMonths < 999 ? `(~${Math.floor(ageInMonths / 12)}y ${ageInMonths % 12}m)` : ""}`}
+            value={form.animal_type} onChange={v => sf("animal_type", v)}
+            options={[{ v: "", l: "Select…" }, ...animalTypeOptions.map((a: string) => ({ v: a, l: a }))]}
+          />
+        )}
+        <div className="grid grid-cols-2 gap-4">
+          <S label="Acquisition Type" value={form.acquisition_type} onChange={v => sf("acquisition_type", v)} options={[{ v: "", l: "Select…" }, ...ACQUISITION_TYPES.map(a => ({ v: a, l: a }))]} />
+          <F label="Weight at Birth (kg)" value={form.weight_at_birth} onChange={v => sf("weight_at_birth", v)} type="number" placeholder="e.g. 25.5" />
+        </div>
+        <S label="Brucellosis Status" value={form.brucellosis_status} onChange={v => sf("brucellosis_status", v)} options={[{ v: "UNKNOWN", l: "Unknown" }, { v: "NOT_VACCINATED", l: "Not Vaccinated" }, { v: "VACCINATED", l: "Vaccinated" }, { v: "NOT_APPLICABLE", l: "Not Applicable" }]} />
+        <div className="flex items-center gap-6">
+          <label className="flex items-center gap-2 cursor-pointer text-[0.85rem] text-foreground">
+            <input type="checkbox" checked={form.is_pregnant} onChange={e => sf("is_pregnant", e.target.checked)} className="w-4 h-4 rounded border-border text-saffron focus:ring-saffron/30" />
+            <span>Currently pregnant</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-[0.85rem] text-foreground">
+            <input type="checkbox" checked={form.is_milking} onChange={e => sf("is_milking", e.target.checked)} className="w-4 h-4 rounded border-border text-saffron focus:ring-saffron/30" />
+            <span>Currently milking</span>
+          </label>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function Step2(props: any) {
   const { motherSearch, setMotherSearch, motherResults, motherOpen, setMotherOpen, fatherSearch, setFatherSearch, fatherResults, fatherOpen, setFatherOpen, form, selectParent, clearParent } = props;
-  return <><h3 className="text-sm font-semibold text-saffron uppercase tracking-widest mb-4 flex items-center gap-2"><GitBranch className="w-4 h-4" /> Parent Details</h3>
-    <div className="space-y-4">
-      <ParentSearch label="Search Mother" search={motherSearch} setSearch={setMotherSearch} results={motherResults} open={motherOpen} setOpen={setMotherOpen} selectedTag={form.mother_tag_number} selectedName={form.mother_name} onSelect={(r: any) => selectParent("mother", r)} onClear={() => clearParent("mother")} />
-      <ParentSearch label="Search Father" search={fatherSearch} setSearch={setFatherSearch} results={fatherResults} open={fatherOpen} setOpen={setFatherOpen} selectedTag={form.father_tag_number} selectedName={form.father_name} onSelect={(r: any) => selectParent("father", r)} onClear={() => clearParent("father")} />
-    </div></>;
+  return (
+    <>
+      <h3 className="eyebrow mb-4 flex items-center gap-1.5"><GitBranch className="w-3.5 h-3.5 text-saffron" /> Parent details</h3>
+      <div className="space-y-4">
+        <ParentSearch label="Search mother" search={motherSearch} setSearch={setMotherSearch} results={motherResults} open={motherOpen} setOpen={setMotherOpen} selectedTag={form.mother_tag_number} selectedName={form.mother_name} onSelect={(r: any) => selectParent("mother", r)} onClear={() => clearParent("mother")} />
+        <ParentSearch label="Search father" search={fatherSearch} setSearch={setFatherSearch} results={fatherResults} open={fatherOpen} setOpen={setFatherOpen} selectedTag={form.father_tag_number} selectedName={form.father_name} onSelect={(r: any) => selectParent("father", r)} onClear={() => clearParent("father")} />
+      </div>
+    </>
+  );
 }
 
 function Step3({ physical, setPhysical, imageFiles, setImageFiles, removeImageFile, uploading }: any) {
-  return <>
-    <h3 className="text-sm font-semibold text-saffron uppercase tracking-widest mb-4 flex items-center gap-2"><Shield className="w-4 h-4" /> Physical Conformation <span className="text-xs font-normal text-muted-foreground">(optional — defaults 0)</span></h3>
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">{PHYSICAL_TRAITS.map(t => <F key={t.key} label={t.label} value={physical[t.key]} onChange={v => setPhysical((p: any) => ({ ...p, [t.key]: v }))} type={t.type} placeholder="0" />)}</div>
-    <hr className="border-saffron/10 my-4" />
-    <h3 className="text-sm font-semibold text-saffron uppercase tracking-widest mb-4 flex items-center gap-2"><ImagePlus className="w-4 h-4" /> Cattle Images <span className="text-xs font-normal text-muted-foreground">(optional)</span></h3>
-    <div className="space-y-2">
-      {imageFiles.map((f: File, i: number) => (
-        <div key={i} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2.5">
-          <div className="flex items-center gap-2 min-w-0"><Upload className="w-3.5 h-3.5 text-saffron shrink-0" /><span className="text-sm truncate">{f.name}</span><span className="text-xs text-muted-foreground shrink-0">({(f.size / 1024).toFixed(0)} KB)</span></div>
-          <button type="button" onClick={() => removeImageFile(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 shrink-0"><Trash2 className="w-4 h-4" /></button>
-        </div>
-      ))}
-      <label className="flex items-center justify-center gap-2 border-2 border-dashed border-saffron/20 rounded-xl p-6 cursor-pointer hover:border-saffron/40 transition-colors">
-        <ImagePlus className="w-5 h-5 text-saffron/50" /><span className="text-sm text-muted-foreground">Click to upload images</span>
-        <input type="file" multiple accept="image/*" className="hidden" onChange={e => { if (e.target.files) setImageFiles((p: File[]) => [...p, ...Array.from(e.target.files!)]) }} />
-      </label>
-      {uploading && <p className="text-xs text-saffron flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Uploading...</p>}
-    </div>
-  </>;
+  return (
+    <>
+      <h3 className="eyebrow mb-4 flex items-center gap-1.5">
+        <Shield className="w-3.5 h-3.5 text-saffron" /> Physical conformation
+        <span className="text-[0.72rem] font-normal text-muted-foreground normal-case tracking-normal">(optional — defaults 0)</span>
+      </h3>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        {PHYSICAL_TRAITS.map(t =>
+          <F key={t.key} label={t.label} value={physical[t.key]} onChange={v => setPhysical((p: any) => ({ ...p, [t.key]: v }))} type={t.type} placeholder="0" />
+        )}
+      </div>
+      <hr className="border-border my-4" />
+      <h3 className="eyebrow mb-4 flex items-center gap-1.5">
+        <ImagePlus className="w-3.5 h-3.5 text-saffron" /> Cattle images
+        <span className="text-[0.72rem] font-normal text-muted-foreground normal-case tracking-normal">(optional)</span>
+      </h3>
+      <div className="space-y-2">
+        {imageFiles.map((f: File, i: number) => (
+          <div key={i} className="flex items-center justify-between surface-soft px-3 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <Upload className="w-3.5 h-3.5 text-saffron shrink-0" />
+              <span className="text-[0.85rem] text-foreground truncate">{f.name}</span>
+              <span className="text-[0.72rem] text-muted-foreground shrink-0">({(f.size / 1024).toFixed(0)} KB)</span>
+            </div>
+            <button type="button" onClick={() => removeImageFile(i)} className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+        <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl p-6 cursor-pointer hover:border-saffron/40 hover:bg-muted/30 transition-colors">
+          <ImagePlus className="w-5 h-5 text-muted-foreground" />
+          <span className="text-[0.85rem] text-muted-foreground">Click to upload images</span>
+          <input type="file" multiple accept="image/*" className="hidden" onChange={e => { if (e.target.files) setImageFiles((p: File[]) => [...p, ...Array.from(e.target.files!)]) }} />
+        </label>
+        {uploading && (
+          <p className="text-[0.78rem] text-saffron inline-flex items-center gap-1.5">
+            <div className="w-3 h-3 border-2 border-saffron/30 border-t-saffron rounded-full animate-spin" /> Uploading…
+          </p>
+        )}
+      </div>
+    </>
+  );
 }
 
 function ParentSearch({ label, search, setSearch, results, open, setOpen, selectedTag, selectedName, onSelect, onClear }: any) {
-  return <div>
-    <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
-    {selectedTag ? (
-      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
-        <div><span className="text-sm font-medium">{selectedName || selectedTag}</span><span className="text-xs text-muted-foreground ml-2">{selectedTag}</span></div>
-        <button type="button" onClick={onClear} className="text-xs text-red-500 hover:underline">Remove</button>
-      </div>
-    ) : (
-      <div className="relative">
-        <input value={search} onChange={e => { setSearch(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 250)}
-          placeholder="Type to search by name or tag..." className="w-full px-3 py-2.5 rounded-lg border border-saffron/20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-saffron/30" />
-        {open && results.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-saffron/10 shadow-lg max-h-48 overflow-y-auto">
-            {results.map((r: any) => <button key={r.tag_number} type="button" onMouseDown={() => onSelect(r)} className="w-full text-left px-3 py-2 text-sm hover:bg-saffron/5 border-b border-saffron/5 last:border-0 flex items-center justify-between"><span className="font-medium">{r.name}</span><span className="text-xs text-muted-foreground">{r.tag_number}</span></button>)}
+  return (
+    <div>
+      <label className="block text-[0.78rem] font-medium text-foreground mb-1.5">{label}</label>
+      {selectedTag ? (
+        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20 rounded-lg px-3 py-2.5">
+          <div>
+            <span className="text-[0.88rem] font-medium text-foreground">{selectedName || selectedTag}</span>
+            <span className="text-[0.78rem] text-muted-foreground ml-2 font-mono">{selectedTag}</span>
           </div>
-        )}
-        {open && search && results.length === 0 && <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-saffron/10 shadow-lg p-3 text-sm text-muted-foreground text-center">No results</div>}
-      </div>
-    )}
-  </div>;
+          <button type="button" onClick={onClear} className="text-[0.78rem] text-red-500 hover:underline">Remove</button>
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            value={search} onChange={e => { setSearch(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 250)}
+            placeholder="Type to search by name or tag…"
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-[0.85rem] outline-none focus:border-saffron focus:ring-2 focus:ring-saffron/15 transition-colors"
+          />
+          {open && results.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 surface-elevated max-h-48 overflow-y-auto">
+              {results.map((r: any) => (
+                <button
+                  key={r.tag_number} type="button" onMouseDown={() => onSelect(r)}
+                  className="w-full text-left px-3 py-2 text-[0.85rem] hover:bg-muted border-b border-border/60 last:border-0 flex items-center justify-between"
+                >
+                  <span className="font-medium text-foreground">{r.name}</span>
+                  <span className="text-[0.72rem] text-muted-foreground font-mono">{r.tag_number}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {open && search && results.length === 0 && (
+            <div className="absolute z-10 w-full mt-1 surface-elevated p-3 text-[0.85rem] text-muted-foreground text-center">No results</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function F({ label, value, onChange, type = "text", placeholder }: any) {
-  return <div><label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label><input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full px-3 py-2.5 rounded-lg border border-saffron/20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-saffron/30" /></div>;
+  return (
+    <div>
+      <label className="block text-[0.78rem] font-medium text-foreground mb-1.5">{label}</label>
+      <input
+        type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full h-9 px-3 rounded-lg border border-border bg-background text-[0.85rem] outline-none focus:border-saffron focus:ring-2 focus:ring-saffron/15 transition-colors"
+      />
+    </div>
+  );
 }
+
 function S({ label, value, onChange, options }: any) {
-  return <div><label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label><select value={value} onChange={e => onChange(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-saffron/20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-saffron/30">{options.map((o: any) => <option key={o.v} value={o.v}>{o.l}</option>)}</select></div>;
+  return (
+    <div>
+      <label className="block text-[0.78rem] font-medium text-foreground mb-1.5">{label}</label>
+      <select
+        value={value} onChange={e => onChange(e.target.value)}
+        className="w-full h-9 px-3 rounded-lg border border-border bg-background text-[0.85rem] outline-none focus:border-saffron focus:ring-2 focus:ring-saffron/15 transition-colors appearance-none"
+      >
+        {options.map((o: any) => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    </div>
+  );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { Plus, Edit2, Trash2, Save, X, Check, Shield, Eye, Settings, User } from "lucide-react";
 
 type Role = "Admin" | "Manager" | "Viewer";
@@ -62,38 +63,35 @@ const INITIAL_USERS: GaushalasUser[] = [
   },
 ];
 
-const ROLE_CONFIG: Record<Role, { label: string; description: string; color: string; icon: React.ReactNode }> = {
+const ROLE_CONFIG: Record<Role, { label: string; description: string; chip: string; icon: React.ReactNode }> = {
   Admin: {
     label: "Admin",
     description: "Full access: manage cows, users, all records, and system settings.",
-    color: "bg-saffron/10 text-saffron border border-saffron/30",
-    icon: <Settings className="w-3 h-3" />,
+    chip: "bg-saffron/10 text-saffron border-saffron/20",
+    icon: <Settings className="w-2.5 h-2.5" strokeWidth={2} />,
   },
   Manager: {
     label: "Manager",
     description: "Can add & edit cow records, manage alerts, donations, and health data.",
-    color: "bg-navy/10 text-navy border border-navy/20",
-    icon: <Shield className="w-3 h-3" />,
+    chip: "bg-navy/10 text-navy border-navy/20 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
+    icon: <Shield className="w-2.5 h-2.5" strokeWidth={2} />,
   },
   Viewer: {
     label: "Viewer",
     description: "Read-only access to all herd data, reports, and dashboards.",
-    color: "bg-gray-100 text-gray-600 border border-gray-200",
-    icon: <Eye className="w-3 h-3" />,
+    chip: "bg-muted text-muted-foreground border-border",
+    icon: <Eye className="w-2.5 h-2.5" strokeWidth={2} />,
   },
 };
 
 const inputCls =
-  "w-full h-9 rounded-md border border-input bg-[#FFF8F0] px-3 py-1 text-sm text-foreground outline-none transition-[color,box-shadow] focus:ring-[3px] focus:ring-saffron/30 focus:border-saffron placeholder:text-muted-foreground/60";
-const labelCls = "block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5";
+  "w-full h-9 rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/15 placeholder:text-muted-foreground/60";
+const labelCls = "block text-[0.72rem] font-medium text-muted-foreground uppercase tracking-wider mb-1.5";
 
 function RoleBadge({ role }: { role: Role }) {
   const cfg = ROLE_CONFIG[role];
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${cfg.color}`}
-      style={{ fontSize: "0.7rem" }}
-    >
+    <span className={`chip ${cfg.chip} text-[0.7rem]`}>
       {cfg.icon}
       {cfg.label}
     </span>
@@ -102,15 +100,12 @@ function RoleBadge({ role }: { role: Role }) {
 
 function StatusBadge({ status }: { status: Status }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-medium ${
-        status === "Active"
-          ? "bg-green-50 text-green-700 border border-green-200"
-          : "bg-gray-100 text-gray-500 border border-gray-200"
-      }`}
-      style={{ fontSize: "0.7rem" }}
-    >
-      <div className={`w-1.5 h-1.5 rounded-full ${status === "Active" ? "bg-green-500" : "bg-gray-400"}`} />
+    <span className={`chip text-[0.7rem] ${
+      status === "Active"
+        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20"
+        : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20"
+    }`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${status === "Active" ? "bg-emerald-500" : "bg-slate-400"}`} />
       {status}
     </span>
   );
@@ -199,67 +194,75 @@ export function AdminUsers() {
   const viewerCount = users.filter(u => u.role === "Viewer" && u.status === "Active").length;
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
-      {/* Page Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-start justify-between gap-3"
+      >
         <div>
-          <h1 className="text-foreground font-bold" style={{ fontSize: "1.4rem" }}>
-            User Management
+          <p className="eyebrow">Administration</p>
+          <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em] mt-1">
+            User management
           </h1>
-          <p className="text-muted-foreground mt-0.5" style={{ fontSize: "0.82rem" }}>
-            Manage staff accounts, assign roles, and control access levels for the GauShala system.
+          <p className="text-[0.82rem] text-muted-foreground mt-1">
+            Manage staff accounts, assign roles, and control access levels.
           </p>
         </div>
         {!showAddForm && (
           <button
             onClick={() => { setShowAddForm(true); setEditingId(null); }}
-            className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md shadow-saffron/20 text-sm shrink-0"
+            className="h-8 px-3 rounded-md bg-foreground text-background text-[0.82rem] font-medium hover:opacity-90 transition-opacity inline-flex items-center gap-1.5 shrink-0"
           >
-            <Plus className="w-4 h-4" /> Add User
+            <Plus className="w-3 h-3" strokeWidth={2} /> Add user
           </button>
         )}
-      </div>
+      </motion.div>
 
-      {/* Save Banner */}
       {savedMsg && (
-        <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 text-green-800 rounded-lg px-4 py-3">
-          <Check className="w-4 h-4 text-green-600 shrink-0" />
-          <p style={{ fontSize: "0.82rem" }}>{savedMsg}</p>
+        <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200 dark:border-emerald-500/20 rounded-lg px-4 py-3">
+          <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-300 shrink-0" />
+          <p className="text-[0.85rem] font-medium">{savedMsg}</p>
         </div>
       )}
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Admins", count: adminCount, color: "from-saffron to-saffron-dark", icon: <Settings className="w-4 h-4 text-white" /> },
-          { label: "Managers", count: managerCount, color: "from-navy to-navy-dark", icon: <Shield className="w-4 h-4 text-white" /> },
-          { label: "Viewers", count: viewerCount, color: "from-gray-500 to-gray-700", icon: <Eye className="w-4 h-4 text-white" /> },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-saffron/10 p-4 flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${s.color} flex items-center justify-center shrink-0`}>
-              {s.icon}
+          { label: "Admins", count: adminCount, accent: "saffron", icon: Settings },
+          { label: "Managers", count: managerCount, accent: "navy", icon: Shield },
+          { label: "Viewers", count: viewerCount, accent: "slate", icon: Eye },
+        ].map(s => {
+          const ACC: Record<string, { bg: string; text: string; ring: string }> = {
+            saffron: { bg: "bg-saffron/10", text: "text-saffron", ring: "ring-saffron/20" },
+            navy:    { bg: "bg-navy/10", text: "text-navy dark:text-blue-300", ring: "ring-navy/20 dark:ring-blue-500/20" },
+            slate:   { bg: "bg-slate-100 dark:bg-slate-500/15", text: "text-slate-600 dark:text-slate-300", ring: "ring-slate-200/60 dark:ring-slate-500/20" },
+          };
+          const a = ACC[s.accent];
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="surface p-4 flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-lg ${a.bg} ${a.text} ring-1 ${a.ring} flex items-center justify-center shrink-0`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[1.35rem] font-semibold text-foreground leading-none tabular">{s.count}</p>
+                <p className="text-[0.72rem] text-muted-foreground mt-1.5">{s.label}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-foreground" style={{ fontSize: "1.3rem" }}>{s.count}</p>
-              <p className="text-muted-foreground" style={{ fontSize: "0.72rem" }}>{s.label}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Add User Form */}
       {showAddForm && (
-        <form onSubmit={handleAdd} className="bg-white rounded-xl border border-saffron/10 p-5 space-y-4">
+        <form onSubmit={handleAdd} className="surface p-5 space-y-4">
           <div className="flex items-center justify-between mb-1">
-            <h4 className="font-semibold text-foreground" style={{ fontSize: "0.9rem" }}>
-              New User
-            </h4>
+            <h4 className="font-semibold text-foreground text-[0.95rem]">New user</h4>
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="p-1.5 rounded-lg hover:bg-muted/30 transition-colors"
+              className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
             >
-              <X className="w-4 h-4 text-muted-foreground" />
+              <X className="w-4 h-4" />
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,60 +308,53 @@ export function AdminUsers() {
             </div>
           </div>
 
-          {/* Role explanation */}
-          <div className="bg-muted/30 rounded-lg p-3 border border-saffron/5">
-            <p className="text-muted-foreground" style={{ fontSize: "0.75rem" }}>
+          <div className="surface-soft p-3">
+            <p className="text-[0.78rem] text-muted-foreground">
               <span className="font-semibold text-foreground">{ROLE_CONFIG[form.role].label}:</span>{" "}
               {ROLE_CONFIG[form.role].description}
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 rounded-lg border border-saffron/20 text-muted-foreground hover:bg-muted/30 transition-colors text-sm"
+              className="h-9 px-4 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors text-[0.85rem] font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-md shadow-saffron/20 text-sm"
+              className="h-9 px-4 rounded-lg bg-foreground text-background text-[0.85rem] font-medium hover:opacity-90 transition-opacity inline-flex items-center gap-2"
             >
-              <Save className="w-4 h-4" /> Create User
+              <Save className="w-3.5 h-3.5" /> Create user
             </button>
           </div>
         </form>
       )}
 
-      {/* Users Table */}
-      <div className="bg-white rounded-xl border border-saffron/10 overflow-hidden">
-        <div className="px-5 py-4 border-b border-saffron/10">
-          <h3 className="font-semibold text-foreground" style={{ fontSize: "0.9rem" }}>
-            All Users
-            <span className="ml-2 text-muted-foreground font-normal" style={{ fontSize: "0.78rem" }}>
-              {users.length} accounts
-            </span>
-          </h3>
+      <div className="surface overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <h3 className="font-semibold text-foreground text-[0.95rem]">All users</h3>
+          <span className="text-[0.78rem] text-muted-foreground tabular">{users.length} accounts</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-muted/20 border-b border-saffron/10">
-                <th className="px-5 py-3 text-left text-muted-foreground font-medium uppercase tracking-wide" style={{ fontSize: "0.68rem" }}>User</th>
-                <th className="px-5 py-3 text-left text-muted-foreground font-medium uppercase tracking-wide" style={{ fontSize: "0.68rem" }}>Department</th>
-                <th className="px-5 py-3 text-left text-muted-foreground font-medium uppercase tracking-wide" style={{ fontSize: "0.68rem" }}>Role</th>
-                <th className="px-5 py-3 text-left text-muted-foreground font-medium uppercase tracking-wide" style={{ fontSize: "0.68rem" }}>Status</th>
-                <th className="px-5 py-3 text-left text-muted-foreground font-medium uppercase tracking-wide" style={{ fontSize: "0.68rem" }}>Last Login</th>
-                <th className="px-5 py-3 text-right text-muted-foreground font-medium uppercase tracking-wide" style={{ fontSize: "0.68rem" }}>Actions</th>
+              <tr className="bg-muted/30 border-b border-border">
+                <th className="px-5 py-2.5 text-left text-muted-foreground font-medium uppercase tracking-wider text-[0.65rem]">User</th>
+                <th className="px-5 py-2.5 text-left text-muted-foreground font-medium uppercase tracking-wider text-[0.65rem]">Department</th>
+                <th className="px-5 py-2.5 text-left text-muted-foreground font-medium uppercase tracking-wider text-[0.65rem]">Role</th>
+                <th className="px-5 py-2.5 text-left text-muted-foreground font-medium uppercase tracking-wider text-[0.65rem]">Status</th>
+                <th className="px-5 py-2.5 text-left text-muted-foreground font-medium uppercase tracking-wider text-[0.65rem]">Last Login</th>
+                <th className="px-5 py-2.5 text-right text-muted-foreground font-medium uppercase tracking-wider text-[0.65rem]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map(user => (
                 editingId === user.id ? (
-                  /* Inline edit row */
-                  <tr key={user.id} className="border-b border-saffron/5 bg-saffron/5">
+                  <tr key={user.id} className="border-b border-border/60 bg-saffron/5">
                     <td colSpan={6} className="px-5 py-4">
                       <form onSubmit={handleEditSave}>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
@@ -414,14 +410,14 @@ export function AdminUsers() {
                         <div className="flex gap-2">
                           <button
                             type="submit"
-                            className="flex items-center gap-1.5 bg-saffron hover:bg-saffron-dark text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                            className="h-8 px-3.5 rounded-md bg-foreground text-background text-[0.82rem] font-medium hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
                           >
                             <Save className="w-3.5 h-3.5" /> Save
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingId(null)}
-                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-saffron/20 text-muted-foreground hover:bg-muted/30 transition-colors text-sm"
+                            className="h-8 px-3.5 rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors text-[0.82rem] font-medium inline-flex items-center gap-1.5"
                           >
                             <X className="w-3.5 h-3.5" /> Cancel
                           </button>
@@ -432,40 +428,30 @@ export function AdminUsers() {
                 ) : (
                   <tr
                     key={user.id}
-                    className="border-b border-saffron/5 last:border-0 hover:bg-muted/20 transition-colors"
+                    className="border-b border-border/60 last:border-0 hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-navy to-navy-dark flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4 text-white" />
+                        <div className="w-8 h-8 rounded-full bg-navy/10 text-navy dark:bg-blue-500/10 dark:text-blue-300 ring-1 ring-navy/20 dark:ring-blue-500/20 flex items-center justify-center shrink-0">
+                          <User className="w-3.5 h-3.5" />
                         </div>
-                        <div>
-                          <p className="font-medium text-foreground" style={{ fontSize: "0.82rem" }}>{user.name}</p>
-                          <p className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{user.email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground text-[0.85rem] truncate">{user.name}</p>
+                          <p className="text-muted-foreground text-[0.72rem] truncate">{user.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <span className="text-muted-foreground" style={{ fontSize: "0.78rem" }}>
-                        {user.department || "—"}
-                      </span>
+                    <td className="px-5 py-3 text-[0.8rem] text-muted-foreground">{user.department || "—"}</td>
+                    <td className="px-5 py-3"><RoleBadge role={user.role} /></td>
+                    <td className="px-5 py-3"><StatusBadge status={user.status} /></td>
+                    <td className="px-5 py-3 text-[0.8rem] text-muted-foreground tabular">
+                      {user.lastLogin === "—" ? "—" : new Date(user.lastLogin).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </td>
-                    <td className="px-5 py-4">
-                      <RoleBadge role={user.role} />
-                    </td>
-                    <td className="px-5 py-4">
-                      <StatusBadge status={user.status} />
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-muted-foreground" style={{ fontSize: "0.78rem" }}>
-                        {user.lastLogin === "—" ? "—" : new Date(user.lastLogin).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => startEdit(user)}
-                          className="p-1.5 rounded-lg hover:bg-saffron/10 text-muted-foreground hover:text-saffron transition-colors"
+                          className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
                           title="Edit user"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -474,14 +460,14 @@ export function AdminUsers() {
                           <>
                             <button
                               onClick={() => handleDelete(user.id)}
-                              className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                              className="h-7 w-7 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center"
                               title="Confirm remove"
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setDeleteId(null)}
-                              className="p-1.5 rounded-lg hover:bg-muted/30 text-muted-foreground transition-colors"
+                              className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground transition-colors flex items-center justify-center"
                               title="Cancel"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -490,7 +476,7 @@ export function AdminUsers() {
                         ) : (
                           <button
                             onClick={() => setDeleteId(user.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                            className="h-7 w-7 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center"
                             title="Remove user"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -505,16 +491,15 @@ export function AdminUsers() {
           </table>
 
           {users.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground" style={{ fontSize: "0.85rem" }}>
+            <div className="text-center py-12 text-muted-foreground text-[0.85rem]">
               No users found.
             </div>
           )}
         </div>
       </div>
 
-      {/* Access Level Reference */}
-      <div className="bg-white rounded-xl border border-saffron/10 p-5">
-        <h4 className="font-semibold text-foreground mb-4" style={{ fontSize: "0.9rem" }}>
+      <div className="surface p-5">
+        <h4 className="font-semibold text-foreground mb-4 text-[0.95rem]">
           Access Level Reference
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Flower2, Eye, EyeOff, LogIn } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Eye, EyeOff, ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { CowIcon, Logo } from "./icons/icons";
+import { CowLoaderMark } from "./ui/loader";
 
 export function Login() {
   const { login } = useAuth();
@@ -19,191 +22,303 @@ export function Login() {
     setTimeout(() => {
       const ok = login(username, password);
       setLoading(false);
-      if (ok) {
-        navigate("/", { replace: true });
-      } else {
-        setError("Invalid username or password. Please try again.");
-      }
-    }, 400);
+      if (ok) navigate("/", { replace: true });
+      else setError("Invalid credentials. Please try again.");
+    }, 600);
   };
 
   const inputCls =
-    "w-full h-10 rounded-lg border border-saffron/20 bg-[#FFF8F0] px-3 py-1 text-sm text-foreground outline-none transition-[color,box-shadow] focus:ring-[3px] focus:ring-saffron/30 focus:border-saffron placeholder:text-muted-foreground/50";
+    "w-full h-10 px-3 rounded-md bg-background border border-border text-[0.875rem] text-foreground placeholder:text-muted-foreground/40 outline-none transition focus:border-foreground focus:ring-2 focus:ring-foreground/10";
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-[#FFFDF8] px-4"
-      style={{ fontFamily: "'Poppins', sans-serif" }}
+      className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-background relative overflow-hidden"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
     >
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-saffron/5 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-navy/5 blur-3xl" />
+      {/* ─── Brand panel ─── */}
+      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-navy-dark text-white p-14">
+        {/* Decorative grid */}
+        <div className="absolute inset-0 opacity-[0.025] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:48px_48px]" />
+        {/* Floating glows */}
+        <motion.div
+          className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-saffron/[0.05] blur-3xl"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute -bottom-40 -left-20 w-[500px] h-[500px] rounded-full bg-saffron/[0.04] blur-3xl"
+          animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.7, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
+        {/* Floating cow silhouettes (decorative) */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(6)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute text-white/[0.04]"
+              style={{
+                left: `${10 + (i * 17) % 80}%`,
+                top: `${15 + (i * 23) % 70}%`,
+              }}
+              animate={{
+                y: [0, -8, 0],
+                rotate: [0, 3, 0],
+              }}
+              transition={{
+                duration: 6 + i,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.5,
+              }}
+            >
+              <CowIcon size={60} strokeWidth={1} />
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="relative flex items-center gap-2.5"
+        >
+          <div className="w-9 h-9 rounded-md bg-gradient-to-br from-saffron to-saffron-dark flex items-center justify-center text-white">
+            <Logo size={20} />
+          </div>
+          <div>
+            <p className="text-[0.85rem] font-semibold text-white tracking-tight">Somnath Gaushala</p>
+            <p className="text-[0.65rem] text-white/40 tracking-wider uppercase mt-0.5">Management Console</p>
+          </div>
+        </motion.div>
+
+        <div className="relative max-w-md">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-saffron/10 border border-saffron/20 mb-5">
+              <Sparkles className="w-3 h-3 text-saffron-light" strokeWidth={2} />
+              <span className="text-[0.65rem] font-medium text-saffron-light tracking-wide">श्री सोमनाथ गौशाला</span>
+            </div>
+            <h1 className="text-[2.75rem] font-semibold text-white leading-[1.05] tracking-[-0.028em]">
+              Care, lineage,
+              <br />
+              <span className="bg-gradient-to-br from-saffron-light via-saffron to-amber-300 bg-clip-text text-transparent">
+                in one ledger.
+              </span>
+            </h1>
+            <p className="text-[0.95rem] text-white/55 leading-relaxed mt-5 max-w-sm">
+              A quiet, focused workspace for tracking the health, breeding,
+              and milk output of every Gir cow under the trust's care.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="grid grid-cols-3 gap-6 mt-12 max-w-sm"
+          >
+            {[
+              { v: "201", l: "Active cattle" },
+              { v: "404", l: "Total registered" },
+              { v: "14", l: "Years of seva" },
+            ].map((s, i) => (
+              <motion.div
+                key={s.l}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <p className="text-[1.85rem] font-semibold text-white metric leading-none">{s.v}</p>
+                <p className="text-[0.7rem] text-white/40 mt-1.5 tracking-wide">{s.l}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="relative text-[0.7rem] text-white/30"
+        >
+          © {new Date().getFullYear()} Shree Somnath Temple Trust · Gujarat, India
+        </motion.p>
       </div>
 
-      <div className="relative w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-saffron to-saffron-dark flex items-center justify-center shadow-lg shadow-saffron/30 mb-4">
-            <Flower2 className="w-7 h-7 text-white" />
-          </div>
-          <h1
-            className="text-foreground font-bold tracking-wide"
-            style={{ fontSize: "1.4rem" }}
-          >
-            GauShala
-          </h1>
-          <p
-            className="text-muted-foreground tracking-widest uppercase mt-0.5"
-            style={{ fontSize: "0.65rem" }}
-          >
-            Somnath Temple Trust
-          </p>
-        </div>
+      {/* ─── Form panel ─── */}
+      <div className="flex items-center justify-center p-6 sm:p-10 relative">
+        {/* Decorative glow on form panel */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-saffron/[0.02] blur-3xl pointer-events-none" />
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl border border-saffron/10 shadow-xl shadow-saffron/5 p-8">
-          <h2
-            className="text-foreground font-semibold mb-1"
-            style={{ fontSize: "1.05rem" }}
-          >
-            Sign in to your account
-          </h2>
-          <p
-            className="text-muted-foreground mb-6"
-            style={{ fontSize: "0.78rem" }}
-          >
-            Enter your credentials to access the dashboard.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-              >
-                Username
-              </label>
-              <input
-                autoFocus
-                required
-                className={inputCls}
-                placeholder="e.g. admin"
-                value={username}
-                onChange={e => { setUsername(e.target.value); setError(""); }}
-                autoComplete="username"
-              />
-            </div>
-
-            <div>
-              <label
-                className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  required
-                  type={showPassword ? "text" : "password"}
-                  className={inputCls + " pr-10"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); setError(""); }}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword
-                    ? <EyeOff className="w-4 h-4" />
-                    : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-100 text-red-700 rounded-lg px-3 py-2.5" style={{ fontSize: "0.78rem" }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-saffron hover:bg-saffron-dark disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition-colors shadow-md shadow-saffron/25 mt-2"
-              style={{ fontSize: "0.88rem" }}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div
+              key="loader"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col items-center gap-4"
             >
-              {loading ? (
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : (
-                <LogIn className="w-4 h-4" />
-              )}
-              {loading ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-muted-foreground" style={{ fontSize: "0.7rem" }}>or</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          {/* Mock Google button */}
-          <button
-            type="button"
-            disabled
-            className="w-full flex items-center justify-center gap-3 border border-border bg-white hover:bg-muted/20 disabled:opacity-40 disabled:cursor-not-allowed text-foreground py-2.5 rounded-lg transition-colors"
-            style={{ fontSize: "0.85rem" }}
-            title="Google sign-in is not configured"
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            Continue with Google
-          </button>
-        </div>
-
-        {/* Hint */}
-        <div className="mt-5 bg-white/60 rounded-xl border border-saffron/10 px-4 py-3">
-          <p className="text-muted-foreground font-medium mb-2" style={{ fontSize: "0.7rem" }}>
-            Demo Credentials
-          </p>
-          <div className="space-y-1">
-            {[
-              { u: "admin",   p: "admin123",   r: "Admin"   },
-              { u: "manager", p: "manager123", r: "Manager" },
-              { u: "viewer",  p: "viewer123",  r: "Viewer"  },
-            ].map(row => (
-              <button
-                key={row.u}
-                type="button"
-                onClick={() => { setUsername(row.u); setPassword(row.p); setError(""); }}
-                className="w-full flex items-center justify-between rounded-md px-2 py-1 hover:bg-saffron/5 transition-colors text-left"
+              <CowLoaderMark size={64} />
+              <motion.p
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="text-[0.85rem] text-muted-foreground"
               >
-                <span className="text-foreground font-mono" style={{ fontSize: "0.72rem" }}>
-                  {row.u} / {row.p}
-                </span>
-                <span
-                  className={`px-1.5 py-0.5 rounded text-white font-medium ${
-                    row.r === "Admin"   ? "bg-saffron"  :
-                    row.r === "Manager" ? "bg-navy"     : "bg-gray-400"
-                  }`}
-                  style={{ fontSize: "0.6rem" }}
+                Signing you in…
+              </motion.p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-[360px] relative"
+            >
+              <div className="lg:hidden flex flex-col items-center text-center mb-8">
+                <div className="w-10 h-10 rounded-md bg-gradient-to-br from-saffron to-saffron-dark flex items-center justify-center text-white mb-3 shadow-lg shadow-saffron/20">
+                  <Logo size={22} />
+                </div>
+                <p className="text-[0.7rem] tracking-widest uppercase text-muted-foreground font-medium">Somnath Temple Trust</p>
+              </div>
+
+              <div className="mb-9">
+                <h1 className="text-[1.75rem] font-semibold text-foreground leading-tight tracking-[-0.022em]">
+                  Welcome back
+                </h1>
+                <p className="text-[0.85rem] text-muted-foreground mt-1.5">
+                  Use your credentials to access the dashboard.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="space-y-1.5"
                 >
-                  {row.r}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="text-muted-foreground mt-2" style={{ fontSize: "0.62rem" }}>
-            Click a row to auto-fill credentials.
-          </p>
-        </div>
+                  <label className="block text-[0.8rem] font-medium text-foreground">Username</label>
+                  <input
+                    autoFocus required className={inputCls}
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={e => { setUsername(e.target.value); setError(""); }}
+                    autoComplete="username"
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[0.8rem] font-medium text-foreground">Password</label>
+                    <button type="button" className="text-[0.72rem] text-muted-foreground hover:text-foreground transition-colors">
+                      Forgot?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      required type={showPassword ? "text" : "password"} className={inputCls + " pr-10"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(""); }}
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button" onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center justify-center"
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </motion.div>
+
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, y: -4, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex items-start gap-2 bg-destructive/[0.06] border border-destructive/15 text-destructive rounded-md px-3 py-2.5 text-[0.8rem]">
+                        <span className="w-1 h-1 mt-2 rounded-full bg-destructive shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <motion.button
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={loading}
+                  className="group w-full h-10 flex items-center justify-center gap-2 bg-foreground text-background rounded-md font-medium text-[0.875rem] hover:opacity-90 disabled:opacity-60 transition-all focus-ring relative overflow-hidden"
+                >
+                  <span className="relative inline-flex items-center gap-2">
+                    Sign in
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                  <motion.div
+                    className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "200%" }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                </motion.button>
+              </form>
+
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-7 rounded-lg border border-border p-4"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Demo accounts</p>
+                  <p className="text-[0.65rem] text-muted-foreground/60">click to fill</p>
+                </div>
+                <div className="space-y-0.5">
+                  {[
+                    { u: "admin",   p: "admin123",   r: "Admin",   color: "text-saffron" },
+                    { u: "manager", p: "manager123", r: "Manager", color: "text-navy dark:text-blue-300" },
+                    { u: "viewer",  p: "viewer123",  r: "Viewer",  color: "text-muted-foreground" },
+                  ].map((row, i) => (
+                    <motion.button
+                      key={row.u}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.4 + i * 0.04 }}
+                      whileHover={{ x: 2 }}
+                      type="button"
+                      onClick={() => { setUsername(row.u); setPassword(row.p); setError(""); }}
+                      className="w-full flex items-center justify-between rounded px-2 py-1.5 hover:bg-muted/50 transition-colors text-left group"
+                    >
+                      <span className="font-mono text-[0.78rem] text-foreground">
+                        {row.u} <span className="text-muted-foreground/40">·</span> {row.p}
+                      </span>
+                      <span className={`text-[0.65rem] font-medium ${row.color} group-hover:translate-x-0.5 transition-transform`}>{row.r}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

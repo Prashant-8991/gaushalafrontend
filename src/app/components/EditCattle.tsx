@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
+import { motion } from "motion/react";
 import { ArrowLeft, CheckCircle, AlertTriangle, Flower2, GitBranch, Heart, Droplets, Shield, ImagePlus, Trash2, ChevronDown, Plus, Calendar, Baby, ChevronLeft, ChevronRight, Pencil, X, Check, Loader2 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -117,15 +118,41 @@ export function EditCattle() {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const firstDay = new Date(milkMonth.year, milkMonth.month - 1, 1).getDay();
 
-  if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-10 h-10 text-saffron animate-spin" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-5 h-5 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-3 pb-20">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3"><button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-muted"><ArrowLeft className="w-5 h-5" /></button><div><h1 className="text-xl font-bold flex items-center gap-2"><Flower2 className="w-5 h-5 text-saffron" />{f.name || tag}</h1><p className="text-xs text-muted-foreground">{tag} &bull; {f.gender} &bull; {f.age}</p></div></div>
-        <span className="text-xs px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">{f.lactation_cycle || f.animal_type}</span>
-      </div>
-      {msg && <div className={`rounded-xl border p-3 flex items-center gap-2 text-sm animate-pulse ${msg.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>{msg.ok ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}{msg.text}</div>}
+    <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-4 pb-20">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="h-8 w-8 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em] flex items-center gap-2 truncate">
+              <Flower2 className="w-5 h-5 text-saffron shrink-0" strokeWidth={1.6} />{f.name || tag}
+            </h1>
+            <p className="text-[0.82rem] text-muted-foreground tabular">{tag} · {f.gender} · {f.age}</p>
+          </div>
+        </div>
+        <span className="chip chip-success text-[0.7rem]">{f.lactation_cycle || f.animal_type}</span>
+      </motion.div>
+      {msg && (
+        <div className={`surface p-3 flex items-center gap-2 text-[0.85rem] ${msg.ok ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+          {msg.ok ? <CheckCircle className="w-3.5 h-3.5 text-success" /> : <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+          <span className={msg.ok ? "text-success" : "text-destructive"}>{msg.text}</span>
+        </div>
+      )}
 
       {/* BASIC — inline edit */}
       <Card icon={<Flower2 className="w-4 h-4" />} title="Basic Information" open={expanded.includes("basic")} onToggle={() => toggle("basic")}>
@@ -154,68 +181,118 @@ export function EditCattle() {
       {/* MILK CALENDAR */}
       <Card icon={<Droplets className="w-4 h-4" />} title={`Milk Calendar — ${monthName}`} open={expanded.includes("milk")} onToggle={() => toggle("milk")}>
         <div className="flex items-center justify-between mb-3">
-          <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-muted"><ChevronLeft className="w-4 h-4" /></button>
-          <span className="text-sm font-medium">{monthName}</span>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-muted"><ChevronRight className="w-4 h-4" /></button>
+          <button onClick={prevMonth} className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+          <span className="text-[0.88rem] font-semibold text-foreground tabular">{monthName}</span>
+          <button onClick={nextMonth} className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-7 gap-1 mb-3">
-          {dayNames.map(d => <div key={d} className="text-center text-[0.6rem] text-muted-foreground font-medium py-1">{d}</div>)}
+          {dayNames.map(d => <div key={d} className="text-center text-[0.6rem] text-muted-foreground font-medium uppercase tracking-wider py-1">{d}</div>)}
           {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
           {Array.from({ length: monthDays }).map((_, i) => {
             const day = i + 1;
             const dateStr = `${milkMonth.year}-${String(milkMonth.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const milkVal = dailyMilk[dateStr];
             return (
-              <div key={day} className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs border cursor-pointer transition-colors ${milkVal != null ? "bg-saffron/10 border-saffron/30 hover:bg-saffron/20" : "bg-muted/30 border-transparent hover:border-saffron/10"}`}
-                onClick={() => setNewMilk({ date: dateStr, milk: String(milkVal ?? "") })}>
-                <span className="text-[0.65rem]">{day}</span>
-                {milkVal != null && <span className="text-[0.55rem] font-semibold text-saffron">{milkVal}L</span>}
+              <div
+                key={day}
+                className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs border cursor-pointer transition-colors ${
+                  milkVal != null
+                    ? "bg-saffron/10 border-saffron/30 hover:bg-saffron/20"
+                    : "bg-muted/30 border-transparent hover:border-saffron/20"
+                }`}
+                onClick={() => setNewMilk({ date: dateStr, milk: String(milkVal ?? "") })}
+              >
+                <span className="text-[0.65rem] text-foreground">{day}</span>
+                {milkVal != null && <span className="text-[0.55rem] font-semibold text-saffron tabular">{milkVal}L</span>}
               </div>
             );
           })}
         </div>
-        <div className="flex items-end gap-2 pt-2 border-t border-saffron/10">
-          <div className="flex-1"><label className="text-[0.55rem] text-muted-foreground block mb-0.5">Date</label><input type="date" value={newMilk.date} onChange={e => setNewMilk(p => ({ ...p, date: e.target.value }))} className="w-full px-2 py-1.5 rounded-lg border border-saffron/20 text-xs" /></div>
-          <div className="w-16"><label className="text-[0.55rem] text-muted-foreground block mb-0.5">L</label><input type="number" step="0.1" value={newMilk.milk} onChange={e => setNewMilk(p => ({ ...p, milk: e.target.value }))} className="w-full px-2 py-1.5 rounded-lg border border-saffron/20 text-xs" /></div>
-          <button onClick={addMilk} className="px-3 py-1.5 rounded-lg bg-saffron text-white text-xs hover:opacity-90 shrink-0"><Plus className="w-3.5 h-3.5" /> Set</button>
+        <div className="flex items-end gap-2 pt-2 border-t border-border">
+          <div className="flex-1">
+            <label className="eyebrow block mb-0.5">Date</label>
+            <input type="date" value={newMilk.date} onChange={e => setNewMilk(p => ({ ...p, date: e.target.value }))} className="w-full h-8 px-2 rounded-md border border-border bg-background text-xs outline-none focus:border-saffron focus:ring-1 focus:ring-saffron/20" />
+          </div>
+          <div className="w-16">
+            <label className="eyebrow block mb-0.5">L</label>
+            <input type="number" step="0.1" value={newMilk.milk} onChange={e => setNewMilk(p => ({ ...p, milk: e.target.value }))} className="w-full h-8 px-2 rounded-md border border-border bg-background text-xs outline-none focus:border-saffron focus:ring-1 focus:ring-saffron/20" />
+          </div>
+          <button onClick={addMilk} className="h-8 px-3 rounded-md bg-foreground text-background text-xs font-medium hover:opacity-90 shrink-0 inline-flex items-center gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Set
+          </button>
         </div>
       </Card>
 
       {/* BREED SCORE — progress inputs */}
       <Card icon={<Shield className="w-4 h-4" />} title="Breed Score" open={expanded.includes("breed")} onToggle={() => toggle("breed")}>
         <div className="space-y-3">
-          <div className="text-sm"><span className="text-muted-foreground">Hip Width:</span> <input type="text" value={breedScore.hip_width || "0"} onChange={e => setBreedScore(p => ({ ...p, hip_width: e.target.value }))} className="px-2 py-1 rounded border border-saffron/20 text-sm w-20 ml-2" /></div>
+          <div className="flex items-center gap-3 text-[0.85rem]">
+            <span className="text-muted-foreground w-20 shrink-0">Hip Width</span>
+            <input
+              type="text" value={breedScore.hip_width || "0"}
+              onChange={e => setBreedScore(p => ({ ...p, hip_width: e.target.value }))}
+              className="w-20 h-8 px-2 rounded-md border border-border bg-background text-[0.82rem] outline-none focus:border-saffron focus:ring-1 focus:ring-saffron/20"
+            />
+          </div>
           {BREED_TRAITS.map(t => {
             const val = parseFloat(breedScore[t.key] || "0");
             return (
               <div key={t.key} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-20 shrink-0">{t.label}</span>
+                <span className="text-[0.78rem] text-muted-foreground w-20 shrink-0">{t.label}</span>
                 <input type="range" min="0" max="10" step="0.5" value={val} onChange={e => setBreedScore(p => ({ ...p, [t.key]: e.target.value }))} className="flex-1 accent-saffron h-1.5" />
-                <input type="number" min="0" max="10" step="0.5" value={breedScore[t.key] || "0"} onChange={e => setBreedScore(p => ({ ...p, [t.key]: e.target.value }))} className="w-14 px-1.5 py-1 rounded border border-saffron/20 text-xs text-center" />
+                <input type="number" min="0" max="10" step="0.5" value={breedScore[t.key] || "0"} onChange={e => setBreedScore(p => ({ ...p, [t.key]: e.target.value }))} className="w-14 h-8 px-1.5 rounded-md border border-border bg-background text-xs text-center outline-none focus:border-saffron focus:ring-1 focus:ring-saffron/20 tabular" />
               </div>
             );
           })}
         </div>
-        <div className="flex justify-end mt-3"><button onClick={saveBreedScore} className="px-4 py-2 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Save Score</button></div>
+        <div className="flex justify-end mt-3">
+          <button
+            onClick={saveBreedScore}
+            className="h-8 px-3.5 rounded-md bg-foreground text-background text-xs font-medium hover:opacity-90 inline-flex items-center gap-1.5"
+          >
+            <CheckCircle className="w-3.5 h-3.5" /> Save score
+          </button>
+        </div>
       </Card>
 
       {/* VACCINE — simple list */}
       <Card icon={<Shield className="w-4 h-4" />} title="Vaccination" open={expanded.includes("vaccine")} onToggle={() => toggle("vaccine")}>
-        {vaccine.length > 0 ? <div className="space-y-1.5">{vaccine.map((v: any, i: number) => (
-          <div key={i} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2.5 text-sm">
-            <div className="flex items-center gap-3"><span className={`w-2 h-2 rounded-full ${v.data === "overdue" ? "bg-red-500" : "bg-green-500"}`} /><span className="font-medium">{v.name}</span><span className="text-xs text-muted-foreground">Last: {v.last_vaccination ? fmtd(v.last_vaccination) : "—"}</span></div>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.data === "overdue" ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>{v.data}</span>
+        {vaccine.length > 0 ? (
+          <div className="space-y-1.5">
+            {vaccine.map((v: any, i: number) => (
+              <div key={i} className="flex items-center justify-between surface-soft px-3 py-2.5 text-[0.85rem]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${v.data === "overdue" ? "bg-red-500" : "bg-emerald-500"}`} />
+                  <span className="font-medium text-foreground">{v.name}</span>
+                  <span className="text-[0.72rem] text-muted-foreground">Last: {v.last_vaccination ? fmtd(v.last_vaccination) : "—"}</span>
+                </div>
+                <span className={`chip text-[0.7rem] ${
+                  v.data === "overdue" ? "chip-danger" : "chip-success"
+                }`}>{v.data}</span>
+              </div>
+            ))}
           </div>
-        ))}</div> : <p className="text-sm text-muted-foreground">No records.</p>}
+        ) : <p className="text-[0.85rem] text-muted-foreground">No records.</p>}
       </Card>
 
       {/* PREGNANCY */}
       <Card icon={<Heart className="w-4 h-4" />} title="Pregnancy History" open={expanded.includes("preg")} onToggle={() => toggle("preg")}>
         <div className="space-y-1.5">
           {preg.map((p: any) => (
-            <div key={p.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2.5 text-sm">
-              <div className="flex items-center gap-3 flex-wrap"><span className="text-xs"><Calendar className="w-3 h-3 inline mr-1" />C: <b>{fmtd(p.conception_date)}</b></span><span className="text-xs"><Baby className="w-3 h-3 inline mr-1" />B: <b>{fmtd(p.birth_date)}</b></span><span className="text-xs text-saffron font-medium">{p.gestation_period || ""}</span><span className="text-xs text-navy">{p.calving_interval || ""}</span></div>
-              <button onClick={() => delPreg(p.id)} className="p-1 rounded hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+            <div key={p.id} className="flex items-center justify-between surface-soft px-3 py-2.5 text-[0.85rem]">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-[0.78rem] inline-flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-muted-foreground" />C: <b className="text-foreground">{fmtd(p.conception_date)}</b>
+                </span>
+                <span className="text-[0.78rem] inline-flex items-center gap-1">
+                  <Baby className="w-3 h-3 text-muted-foreground" />B: <b className="text-foreground">{fmtd(p.birth_date)}</b>
+                </span>
+                <span className="text-[0.78rem] text-saffron font-medium">{p.gestation_period || ""}</span>
+                <span className="text-[0.78rem] text-navy dark:text-blue-300">{p.calving_interval || ""}</span>
+              </div>
+              <button onClick={() => delPreg(p.id)} className="h-6 w-6 rounded-md hover:bg-red-50 text-red-400 hover:text-red-500 transition-colors flex items-center justify-center">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           ))}
           <div className="flex items-center gap-2 pt-2 border-t border-saffron/10"><input type="date" value={newPreg.conception_date} onChange={e => setNewPreg(p => ({ ...p, conception_date: e.target.value }))} className="px-2.5 py-1.5 rounded-lg border border-saffron/20 text-xs flex-1" /><span className="text-xs">→</span><input type="date" value={newPreg.birth_date} onChange={e => setNewPreg(p => ({ ...p, birth_date: e.target.value }))} className="px-2.5 py-1.5 rounded-lg border border-saffron/20 text-xs flex-1" /><button onClick={addPreg} className="px-3 py-1.5 rounded-lg bg-saffron text-white text-xs hover:opacity-90 shrink-0"><Plus className="w-3.5 h-3.5" /> Add</button></div>
@@ -232,7 +309,18 @@ export function EditCattle() {
 }
 
 function Card({ icon, title, open, onToggle, children }: any) {
-  return <div className="bg-white rounded-2xl border border-saffron/10 overflow-hidden shadow-sm"><button onClick={onToggle} className="w-full flex items-center justify-between p-4 hover:bg-muted/30 text-left"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl bg-saffron/10 flex items-center justify-center">{icon}</div><h3 className="font-semibold text-sm">{title}</h3></div><ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} /></button>{open && <div className="px-4 pb-4">{children}</div>}</div>;
+  return (
+    <div className="surface overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between p-4 hover:bg-muted/30 text-left transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-saffron/10 text-saffron ring-1 ring-saffron/20 flex items-center justify-center">{icon}</div>
+          <h3 className="font-semibold text-[0.92rem] text-foreground">{title}</h3>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="px-4 pb-4 border-t border-border pt-3">{children}</div>}
+    </div>
+  );
 }
 
 function IRow({ label, field, val, editing, editVal, setEditVal, onEdit, onSave, onCancel, type = "text" }: any) {

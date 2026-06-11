@@ -2,15 +2,16 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   HandHeart, ArrowDownToLine, ArrowUpFromLine, Search, Filter, Calendar,
-  Scale, Phone, User, Building, MapPin, ShieldCheck, ChevronDown, ChevronUp,
-  RefreshCw, Flower2, Loader2, AlertTriangle,
+  Scale, Phone, User, Building, ChevronDown, ChevronUp, AlertTriangle,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { DonationRecord, DonationContact, getCowById, Cow } from "../data/mockData";
+import { DonationRecord, getCowById, Cow } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { CowCard } from "./CowCard";
+import { CowIcon } from "./icons/icons";
+import { PageLoader } from "./ui/loader";
 
-type FilterType = "All" | "Donated In" | "Donated Out";
+type FilterType = "All" | "Donated Out";
 type FilterGender = "All" | "Female" | "Male";
 
 interface DonatedOutApi {
@@ -24,14 +25,6 @@ interface DonatedOutApi {
 }
 
 function mapDonatedOut(api: DonatedOutApi): DonationRecord {
-  const contact: DonationContact = {
-    name: api.donated_to ?? "Unknown",
-    organization: api.donated_to ?? "Unknown",
-    district: "",
-    phone: api.mobile_number ?? "",
-    pocName: api.donated_to ?? "Unknown",
-    pocPhone: api.mobile_number ?? "",
-  };
   return {
     id: api.tag_number ?? `donated-${Math.random().toString(36).slice(2, 8)}`,
     cowId: null,
@@ -41,7 +34,14 @@ function mapDonatedOut(api: DonatedOutApi): DonationRecord {
     cowTagNumber: api.tag_number ?? "",
     type: "Donated Out",
     date: api.donated_out_date ?? "",
-    contact,
+    contact: {
+      name: api.donated_to ?? "Unknown",
+      organization: api.donated_to ?? "Unknown",
+      district: "",
+      phone: api.mobile_number ?? "",
+      pocName: api.donated_to ?? "Unknown",
+      pocPhone: api.mobile_number ?? "",
+    },
     ageAtDonation: "",
     weightAtDonation: 0,
     healthAtDonation: "",
@@ -91,120 +91,109 @@ export function Donations() {
     if (cow) setSelectedCow(cow);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-saffron animate-spin" />
-          <p className="text-muted-foreground text-sm">Loading donation records...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <PageLoader label="Loading donations…" />;
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-8 text-center max-w-md">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <h3 className="text-lg font-bold mb-1">Failed to load</h3>
-          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh] p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="surface p-8 text-center max-w-md"
+        >
+          <AlertTriangle className="w-8 h-8 text-destructive/70 mx-auto mb-3" />
+          <p className="font-medium">Failed to load</p>
+          <p className="text-sm text-muted-foreground mt-1">{(error as Error).message}</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2">
-            <HandHeart className="w-6 h-6 text-saffron" />
-            Donation Records
-          </h1>
-          <p style={{ fontSize: "0.8rem" }} className="text-muted-foreground mt-0.5">
-            Records of cows donated out of Somnath Temple Trust Gaushala
-          </p>
-        </div>
-      </div>
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <p className="eyebrow">Donations</p>
+        <h1 className="text-[1.5rem] font-semibold text-foreground leading-tight tracking-[-0.02em] mt-1 flex items-center gap-2">
+          <HandHeart className="w-5 h-5 text-saffron" strokeWidth={1.6} />
+          Donation records
+        </h1>
+        <p className="text-[0.82rem] text-muted-foreground mt-1">
+          Records of cows donated to and from Somnath Gaushala.
+        </p>
+      </motion.div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {[
-          { label: "Donated In", value: donatedInCount, icon: <ArrowDownToLine className="w-5 h-5" />, color: "from-green-500/10 to-green-600/5", iconColor: "text-green-600", border: "border-green-200" },
-          { label: "Donated Out", value: donatedOutCount, icon: <ArrowUpFromLine className="w-5 h-5" />, color: "from-amber-500/10 to-amber-600/5", iconColor: "text-amber-600", border: "border-amber-200" },
-          { label: "Unique Recipients", value: uniqueOrgs, icon: <Building className="w-5 h-5" />, color: "from-blue-500/10 to-blue-600/5", iconColor: "text-blue-600", border: "border-blue-200" },
-          { label: "Total Records", value: donationRecords.length, icon: <HandHeart className="w-5 h-5" />, color: "from-purple-500/10 to-purple-600/5", iconColor: "text-purple-600", border: "border-purple-200" },
-        ].map(kpi => (
-          <div key={kpi.label}
-            className={`bg-gradient-to-br ${kpi.color} rounded-xl p-4 border ${kpi.border}`}>
-            <div className={`${kpi.iconColor} mb-2`}>{kpi.icon}</div>
-            <p style={{ fontSize: "1.5rem", fontWeight: 700 }} className="text-foreground">{kpi.value}</p>
-            <p style={{ fontSize: "0.7rem" }} className="text-muted-foreground">{kpi.label}</p>
-          </div>
-        ))}
+          { label: "Donated in",        value: donatedInCount,     icon: ArrowDownToLine, accent: "success" },
+          { label: "Donated out",       value: donatedOutCount,    icon: ArrowUpFromLine, accent: "warning" },
+          { label: "Unique recipients", value: uniqueOrgs,         icon: Building,        accent: "info" },
+          { label: "Total records",     value: donationRecords.length, icon: HandHeart, accent: "muted" },
+        ].map(kpi => {
+          const ACC: Record<string, { bg: string; text: string; ring: string }> = {
+            success: { bg: "bg-success/10", text: "text-success", ring: "ring-success/20" },
+            warning: { bg: "bg-warning/10", text: "text-warning", ring: "ring-warning/20" },
+            info:    { bg: "bg-info/10 dark:bg-blue-500/10", text: "text-info dark:text-blue-300", ring: "ring-info/20 dark:ring-blue-500/20" },
+            muted:   { bg: "bg-muted", text: "text-muted-foreground", ring: "ring-border" },
+          };
+          const a = ACC[kpi.accent];
+          const Icon = kpi.icon;
+          return (
+            <div key={kpi.label} className="surface p-4 hover-lift">
+              <div className={`w-8 h-8 rounded-md ${a.bg} ${a.text} ring-1 ${a.ring} flex items-center justify-center mb-2.5`}>
+                <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />
+              </div>
+              <p className="text-[1.4rem] font-semibold text-foreground metric leading-none">{kpi.value}</p>
+              <p className="text-[0.72rem] text-muted-foreground mt-1.5">{kpi.label}</p>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="flex flex-wrap gap-2 bg-white rounded-xl border border-saffron/10 p-3 items-center">
+      <div className="surface p-2.5 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
           <input
-            type="text"
-            placeholder="Search by name, tag, recipient..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-muted/50 border border-saffron/10 focus:outline-none focus:ring-2 focus:ring-saffron/30"
-            style={{ fontSize: "0.8rem" }}
+            type="text" placeholder="Search by name, tag, recipient…"
+            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-8 pl-9 pr-3 rounded-md bg-transparent text-[0.85rem] outline-none placeholder:text-muted-foreground/40 focus:bg-muted/40 transition-colors"
           />
         </div>
-
-        <div className="flex bg-muted/50 rounded-lg p-0.5 border border-saffron/10">
-          {(["All", "Donated Out"] as FilterType[]).map(type => (
+        <div className="inline-flex p-0.5 rounded-md bg-muted border border-border">
+          {(["All", "Donated Out"] as FilterType[]).map(t => (
             <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-3 py-1.5 rounded-md transition-all ${
-                filterType === type
-                  ? "bg-saffron text-white shadow-sm"
+              key={t} onClick={() => setFilterType(t)}
+              className={`h-7 px-3 rounded text-[0.75rem] font-medium transition-colors ${
+                filterType === t
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              style={{ fontSize: "0.78rem" }}
             >
-              {type === "All" && "All"}
-              {type === "Donated Out" && (
-                <span className="flex items-center gap-1">
-                  <ArrowUpFromLine className="w-3 h-3" /> Donated Out
-                </span>
+              {t === "All" ? "All" : (
+                <span className="inline-flex items-center gap-1"><ArrowUpFromLine className="w-3 h-3" /> Donated out</span>
               )}
             </button>
           ))}
         </div>
-
         <select
-          value={filterGender}
-          onChange={e => setFilterGender(e.target.value as FilterGender)}
-          className="px-3 py-2 rounded-lg bg-muted/50 border border-saffron/10 appearance-none focus:outline-none focus:ring-2 focus:ring-saffron/30"
-          style={{ fontSize: "0.8rem" }}
+          value={filterGender} onChange={e => setFilterGender(e.target.value as FilterGender)}
+          className="h-8 px-3 rounded-md bg-muted/40 border border-border text-[0.85rem] outline-none appearance-none focus:bg-card focus:border-foreground/30 transition-colors"
         >
-          <option value="All">All Gender</option>
-          <option value="Female">Female (Cows/Calves)</option>
-          <option value="Male">Male (Bulls/Calves)</option>
+          <option value="All">All gender</option>
+          <option value="Female">Female</option>
+          <option value="Male">Male</option>
         </select>
-
-        <div className="flex items-center gap-1 px-2">
-          <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-          <span style={{ fontSize: "0.75rem" }} className="text-muted-foreground">
-            {filteredRecords.length} records
-          </span>
-        </div>
+        <span className="text-[0.78rem] text-muted-foreground tabular">{filteredRecords.length} records</span>
       </div>
 
       {filteredRecords.length === 0 ? (
-        <div className="text-center py-16">
-          <HandHeart className="w-12 h-12 text-saffron/20 mx-auto mb-3" />
-          <p className="text-muted-foreground">No donation records match your filters.</p>
+        <div className="surface py-16 text-center">
+          <HandHeart className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground text-[0.9rem]">No donation records match your filters</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filteredRecords.map((record, idx) => (
             <DonationCard
               key={record.id}
@@ -220,11 +209,7 @@ export function Donations() {
 
       <AnimatePresence>
         {selectedCow && (
-          <CowCard
-            cow={selectedCow}
-            onClose={() => setSelectedCow(null)}
-            onSelectCow={setSelectedCow}
-          />
+          <CowCard cow={selectedCow} onClose={() => setSelectedCow(null)} onSelectCow={setSelectedCow} />
         )}
       </AnimatePresence>
     </div>
@@ -232,11 +217,7 @@ export function Donations() {
 }
 
 function DonationCard({
-  record,
-  index,
-  isExpanded,
-  onToggle,
-  onViewProfile,
+  record, index, isExpanded, onToggle, onViewProfile,
 }: {
   record: DonationRecord;
   index: number;
@@ -252,84 +233,51 @@ function DonationCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.03, 0.5), duration: 0.3 }}
-      className="bg-white rounded-xl border border-saffron/10 overflow-hidden hover:shadow-md hover:shadow-saffron/5 transition-shadow"
+      transition={{ delay: Math.min(index * 0.02, 0.4), duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="surface overflow-hidden hover-lift"
     >
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 p-4 text-left"
+        className="w-full flex items-center gap-3 p-3.5 text-left"
       >
-        <div
-          className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
-            isIn
-              ? "bg-green-50 text-green-600 border border-green-200"
-              : "bg-amber-50 text-amber-600 border border-amber-200"
-          }`}
-        >
-          {isIn ? (
-            <ArrowDownToLine className="w-5 h-5" />
-          ) : (
-            <ArrowUpFromLine className="w-5 h-5" />
-          )}
+        <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ring-1 ${
+          isIn ? "bg-success/10 text-success ring-success/20" : "bg-warning/10 text-warning ring-warning/20"
+        }`}>
+          {isIn ? <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={1.8} /> : <ArrowUpFromLine className="w-3.5 h-3.5" strokeWidth={1.8} />}
         </div>
-
         <div className="shrink-0">
           {record.cowImage ? (
-            <ImageWithFallback
-              src={record.cowImage}
-              alt={record.cowName}
-              className={`w-12 h-12 rounded-full object-cover border-2 ${
-                isIn ? "border-green-300" : "border-amber-300"
-              }`}
-            />
+            <ImageWithFallback src={record.cowImage} alt={record.cowName} className="w-9 h-9 rounded-md object-cover ring-1 ring-border" />
           ) : (
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 ${
-              isIn ? "border-green-300 bg-green-50 text-green-600" : "border-amber-300 bg-amber-50 text-amber-600"
+            <div className={`w-9 h-9 rounded-md flex items-center justify-center ring-1 ${
+              isIn ? "bg-success/10 text-success ring-success/20" : "bg-warning/10 text-warning ring-warning/20"
             }`}>
-              {record.cowName.charAt(0).toUpperCase()}
+              <CowIcon size={16} strokeWidth={1.6} />
             </div>
           )}
         </div>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 style={{ fontSize: "0.95rem", fontWeight: 600 }}>{record.cowName}</h3>
-            <span
-              style={{ fontSize: "0.6rem" }}
-              className={`px-2 py-0.5 rounded-full ${
-                isIn
-                  ? "bg-green-50 text-green-700 border border-green-200"
-                  : "bg-amber-50 text-amber-700 border border-amber-200"
-              }`}
-            >
-              {record.type}
+            <h3 className="text-[0.92rem] font-semibold text-foreground">{record.cowName}</h3>
+            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.65rem] font-medium border ${
+              isIn ? "bg-success/8 text-success border-success/20" : "bg-warning/8 text-warning border-warning/20"
+            }`}>
+              {isIn ? "Donated in" : "Donated out"}
             </span>
-            <span style={{ fontSize: "0.6rem" }} className="text-muted-foreground/50">
-              {record.cowTagNumber}
-            </span>
+            <span className="text-[0.68rem] text-muted-foreground font-mono">{record.cowTagNumber}</span>
           </div>
-          <p style={{ fontSize: "0.72rem" }} className="text-muted-foreground mt-0.5 truncate">
-            {isIn ? "From" : "To"}: <span className="text-foreground/70">{record.contact.name}</span>
+          <p className="text-[0.78rem] text-muted-foreground mt-0.5 truncate">
+            {isIn ? "From" : "To"}: <span className="text-foreground">{record.contact.name}</span>
           </p>
         </div>
-
         <div className="shrink-0 text-right hidden sm:block">
-          <p style={{ fontSize: "0.78rem", fontWeight: 500 }} className="text-foreground/70">
-            {formattedDate}
-          </p>
-          <p style={{ fontSize: "0.6rem" }} className="text-muted-foreground">
-            {record.cowGender}
-          </p>
+          <p className="text-[0.82rem] font-medium text-foreground metric">{formattedDate}</p>
+          <p className="text-[0.65rem] text-muted-foreground mt-0.5">{record.cowGender}</p>
         </div>
-
-        <div className="shrink-0 ml-1">
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          )}
+        <div className="shrink-0 ml-1 h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground">
+          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </div>
       </button>
 
@@ -339,63 +287,46 @@ function DonationCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 border-t border-saffron/10 pt-3">
+            <div className="px-4 pb-4 border-t border-border pt-3">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <SectionHeader icon={<Flower2 className="w-3.5 h-3.5 text-saffron" />} title="Cow Details" />
-
-                  <div className="bg-muted/30 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-3">
+                <div className="space-y-2.5">
+                  <SectionHeader icon={<CowIcon size={12} strokeWidth={2} className="text-saffron" />} title="Cow details" />
+                  <div className="bg-muted/40 rounded-md p-3 space-y-2.5">
+                    <div className="flex items-center gap-2.5">
                       {record.cowImage ? (
-                        <ImageWithFallback
-                          src={record.cowImage}
-                          alt={record.cowName}
-                          className="w-16 h-16 rounded-xl object-cover border-2 border-saffron/20"
-                        />
+                        <ImageWithFallback src={record.cowImage} alt={record.cowName} className="w-12 h-12 rounded-md object-cover ring-1 ring-border" />
                       ) : (
-                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-saffron/20 to-navy/20 flex items-center justify-center text-2xl font-bold text-saffron border-2 border-saffron/20">
+                        <div className="w-12 h-12 rounded-md bg-saffron/10 text-saffron ring-1 ring-saffron/20 flex items-center justify-center text-base font-semibold">
                           {record.cowName.charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div>
-                        <p style={{ fontSize: "1rem", fontWeight: 600 }}>{record.cowName}</p>
-                        <p style={{ fontSize: "0.7rem" }} className="text-muted-foreground">
-                          {record.cowTagNumber} &bull; {record.cowGender}
-                        </p>
+                        <p className="text-[0.95rem] font-semibold text-foreground">{record.cowName}</p>
+                        <p className="text-[0.7rem] text-muted-foreground font-mono">{record.cowTagNumber} · {record.cowGender}</p>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-2 gap-2">
                       <DetailChip icon={<Calendar className="w-3 h-3" />} label="Date" value={formattedDate} />
-                      <DetailChip icon={<User className="w-3 h-3" />} label="Animal Type" value={record.cowGender} />
+                      <DetailChip icon={<Scale className="w-3 h-3" />} label="Gender" value={record.cowGender} />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <SectionHeader
-                    icon={<ArrowUpFromLine className="w-3.5 h-3.5 text-amber-600" />}
-                    title="Recipient Details"
-                  />
-
-                  <div className="bg-amber-50/50 rounded-xl p-3 space-y-2.5 border border-amber-200/50">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                        <User className="w-5 h-5" />
+                <div className="space-y-2.5">
+                  <SectionHeader icon={<Building className="w-3 h-3 text-warning" />} title="Recipient details" />
+                  <div className="bg-warning/8 border border-warning/20 rounded-md p-3 space-y-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-md bg-warning/15 text-warning flex items-center justify-center">
+                        <User className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </div>
-                      <div>
-                        <p style={{ fontSize: "0.9rem", fontWeight: 600 }} className="text-foreground">
-                          {record.contact.name}
-                        </p>
-                      </div>
+                      <p className="text-[0.9rem] font-semibold text-foreground">{record.contact.name}</p>
                     </div>
-
                     <div className="grid grid-cols-2 gap-2">
-                      <ContactChip icon={<Phone className="w-3 h-3" />} label="Mobile" value={record.contact.phone} />
-                      <ContactChip icon={<Building className="w-3 h-3" />} label="Organization" value={record.contact.organization} />
+                      <DetailChip icon={<Phone className="w-3 h-3" />} label="Mobile" value={record.contact.phone} />
+                      <DetailChip icon={<Building className="w-3 h-3" />} label="Organization" value={record.contact.organization} />
                     </div>
                   </div>
                 </div>
@@ -412,41 +343,19 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   return (
     <div className="flex items-center gap-1.5">
       {icon}
-      <h4 style={{ fontSize: "0.7rem", fontWeight: 600 }} className="text-foreground/50 uppercase tracking-widest">
-        {title}
-      </h4>
+      <h4 className="eyebrow">{title}</h4>
     </div>
   );
 }
 
 function DetailChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="bg-white rounded-lg p-2 text-center">
-      <div className="flex items-center justify-center gap-1 text-saffron/60 mb-0.5">
+    <div className="bg-card rounded-md p-2 border border-border">
+      <div className="flex items-center gap-1 text-muted-foreground/60 mb-0.5">
         {icon}
-        <span style={{ fontSize: "0.5rem" }} className="text-muted-foreground/40 uppercase tracking-wider">
-          {label}
-        </span>
+        <span className="eyebrow">{label}</span>
       </div>
-      <p style={{ fontSize: "0.78rem", fontWeight: 600 }} className="text-foreground/70">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function ContactChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="bg-white/60 rounded-lg p-2">
-      <div className="flex items-center gap-1 text-muted-foreground/40 mb-0.5">
-        {icon}
-        <span style={{ fontSize: "0.5rem" }} className="uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-      <p style={{ fontSize: "0.75rem", fontWeight: 500 }} className="text-foreground/70">
-        {value || "—"}
-      </p>
+      <p className="text-[0.82rem] font-semibold text-foreground mt-0.5">{value}</p>
     </div>
   );
 }
