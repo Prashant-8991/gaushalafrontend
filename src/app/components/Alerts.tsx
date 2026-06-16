@@ -5,6 +5,8 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, CheckSquare, Square, X, Send,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../auth/AuthContext";
+import { getToken } from "../services/api";
 
 interface VaccineAlert {
   tag_number: string;
@@ -30,7 +32,7 @@ const PAGE_SIZES = [10, 25, 50];
 
 function AlertGroup({
   title, alerts, badge, vaccineColors, onDoneClick, defaultPageSize, defaultExpanded,
-  selected, onToggleSelect,
+  selected, onToggleSelect, canEdit = true,
 }: {
   title: string;
   alerts: VaccineAlert[];
@@ -41,6 +43,7 @@ function AlertGroup({
   defaultExpanded: boolean;
   selected: Set<string>;
   onToggleSelect: (key: string) => void;
+  canEdit?: boolean;
 }) {
   const BadgeIcon = badge.icon;
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
@@ -98,9 +101,11 @@ function AlertGroup({
                       className={`bg-white rounded-xl border p-3 hover:shadow-md transition-shadow h-full flex flex-col ${title === "Overdue" ? "border-red-200 border-t-4 border-t-red-500" : "border-saffron/10 border-t-4 border-t-yellow-400"} ${isSelected ? "ring-2 ring-saffron" : ""}`}
                     >
                       <div className="flex items-start gap-2">
-                        <button onClick={() => onToggleSelect(selKey)} className="shrink-0 mt-0.5">
-                          {isSelected ? <CheckSquare className="w-4 h-4 text-saffron" /> : <Square className="w-4 h-4 text-gray-300 hover:text-gray-400" />}
-                        </button>
+                        {canEdit && (
+                          <button onClick={() => onToggleSelect(selKey)} className="shrink-0 mt-0.5">
+                            {isSelected ? <CheckSquare className="w-4 h-4 text-saffron" /> : <Square className="w-4 h-4 text-gray-300 hover:text-gray-400" />}
+                          </button>
+                        )}
                         <div className={`w-8 h-8 rounded-lg ${vc.bg} flex items-center justify-center shrink-0`}>
                           <Syringe className={`w-4 h-4 ${vc.color}`} />
                         </div>
@@ -123,8 +128,10 @@ function AlertGroup({
                             {new Date(alert.next_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                           </p>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); onDoneClick(selKey); }}
-                          className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-colors text-xs">Done</button>
+                        {canEdit && (
+                          <button onClick={(e) => { e.stopPropagation(); onDoneClick(selKey); }}
+                            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-colors text-xs">Done</button>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-1.5">
                         <span style={{ fontSize: '0.6rem' }} className={vc.color}>{alert.name}</span>
@@ -229,6 +236,7 @@ function BatchVaccinateModal({
 
 export function Alerts() {
   const queryClient = useQueryClient();
+  const { isAdminOrManager } = useAuth();
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterVaccine, setFilterVaccine] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -279,7 +287,11 @@ export function Alerts() {
   const handleBatchConfirm = async (records: { tag_number: string; vaccine_id: number; vaccinated_on: string }[]) => {
     try {
       const res = await fetch(`${LOCAL_API}/vaccination-batch`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
         body: JSON.stringify(records),
       });
       const data = await res.json();
@@ -397,30 +409,30 @@ export function Alerts() {
         <div className="space-y-3">
           {grouped.overdue.length > 0 && (
             <div data-section-title="Overdue">
-              <AlertGroup title="Overdue" alerts={grouped.overdue} badge={{ color: "text-red-700", bg: "bg-red-50 border-red-200", icon: AlertTriangle, label: "Overdue" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={true} selected={selected} onToggleSelect={toggleSelect} />
+              <AlertGroup title="Overdue" alerts={grouped.overdue} badge={{ color: "text-red-700", bg: "bg-red-50 border-red-200", icon: AlertTriangle, label: "Overdue" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={true} selected={selected} onToggleSelect={toggleSelect} canEdit={isAdminOrManager} />
             </div>
           )}
           {grouped.dueToday.length > 0 && (
             <div data-section-title="Due Today">
-              <AlertGroup title="Due Today" alerts={grouped.dueToday} badge={{ color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: Calendar, label: "Due Today" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={true} selected={selected} onToggleSelect={toggleSelect} />
+              <AlertGroup title="Due Today" alerts={grouped.dueToday} badge={{ color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: Calendar, label: "Due Today" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={true} selected={selected} onToggleSelect={toggleSelect} canEdit={isAdminOrManager} />
             </div>
           )}
           {grouped.dueThisWeek.length > 0 && (
             <div data-section-title="Due This Week">
-              <AlertGroup title="Due This Week" alerts={grouped.dueThisWeek} badge={{ color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", icon: Clock, label: "Due Soon" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={false} selected={selected} onToggleSelect={toggleSelect} />
+              <AlertGroup title="Due This Week" alerts={grouped.dueThisWeek} badge={{ color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", icon: Clock, label: "Due Soon" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={false} selected={selected} onToggleSelect={toggleSelect} canEdit={isAdminOrManager} />
             </div>
           )}
           {grouped.pending.length > 0 && (
             <div data-section-title="Upcoming">
-              <AlertGroup title="Upcoming" alerts={grouped.pending} badge={{ color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Clock, label: "Upcoming" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={false} selected={selected} onToggleSelect={toggleSelect} />
+              <AlertGroup title="Upcoming" alerts={grouped.pending} badge={{ color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Clock, label: "Upcoming" }} vaccineColors={vaccineColors} onDoneClick={handleDoneClick} defaultPageSize={10} defaultExpanded={false} selected={selected} onToggleSelect={toggleSelect} canEdit={isAdminOrManager} />
             </div>
           )}
         </div>
       )}
 
-      <BatchVaccinateModal open={showBatchModal} selected={selected} alerts={alerts} onClose={() => setShowBatchModal(false)} onConfirm={handleBatchConfirm} />
+      {isAdminOrManager && showBatchModal && <BatchVaccinateModal open={showBatchModal} selected={selected} alerts={alerts} onClose={() => setShowBatchModal(false)} onConfirm={handleBatchConfirm} />}
 
-      {selected.size > 0 && (
+      {isAdminOrManager && selected.size > 0 && (
         <motion.div
           initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
           className="fixed bottom-0 left-0 right-0 z-40 flex justify-center p-4 pointer-events-none"

@@ -381,7 +381,7 @@ export function AllCattle() {
                   Milking Status
                 </p>
                 <div className="flex gap-2">
-                  {[{ label: "Milking", value: true }, { label: "Not Milking", value: false }].map(o => (
+                  {[{ label: "Milking", value: true }].map(o => (
                     <button key={o.label} onClick={() => setMilkingFilter(milkingFilter === o.value ? null : o.value)}
                       className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${milkingFilter === o.value
                         ? "bg-navy text-white border-navy shadow"

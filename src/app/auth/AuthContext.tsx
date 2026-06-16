@@ -1,67 +1,134 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useCallback } from "react";
 
 export type UserRole = "admin" | "manager" | "viewer";
 
 export interface AuthUser {
-  username: string;
-  displayName: string;
+  id: string;
+  email: string;
+  full_name: string;
+  picture?: string;
   role: UserRole;
-  initials: string;
+  is_verified: boolean;
+  is_active: boolean;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
-  login: (username: string, password: string) => boolean;
+  token: string | null;
+  isPendingApproval: boolean;
+  pendingEmail: string;
+  pendingName: string;
+  loginWithGoogle: (idToken: string) => Promise<{ success: boolean; pending?: boolean }>;
   logout: () => void;
+  isAdmin: boolean;
+  isAdminOrManager: boolean;
 }
-
-const MOCK_USERS: Array<{ username: string; password: string; displayName: string; role: UserRole; initials: string }> = [
-  { username: "admin",   password: "admin123",   role: "admin",   displayName: "Prakashbhai Joshi",  initials: "PJ" },
-  { username: "manager", password: "manager123", role: "manager", displayName: "Hemlata Patel",      initials: "HP" },
-  { username: "viewer",  password: "viewer123",  role: "viewer",  displayName: "Dineshbhai Chauhan", initials: "DC" },
-];
-
-const SESSION_KEY = "gaushala_auth_user";
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
-  login: () => false,
+  token: null,
+  isPendingApproval: false,
+  pendingEmail: "",
+  pendingName: "",
+  loginWithGoogle: async () => ({ success: false }),
   logout: () => {},
+  isAdmin: false,
+  isAdminOrManager: false,
 });
+
+const STORAGE_KEY = "gaushala_auth";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
-      const stored = sessionStorage.getItem(SESSION_KEY);
-      return stored ? (JSON.parse(stored) as AuthUser) : null;
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      return stored ? (JSON.parse(stored).user as AuthUser) : null;
     } catch {
       return null;
     }
   });
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      return stored ? (JSON.parse(stored).token as string) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingName, setPendingName] = useState("");
 
-  const login = (username: string, password: string): boolean => {
-    const match = MOCK_USERS.find(
-      u => u.username === username.trim().toLowerCase() && u.password === password
-    );
-    if (!match) return false;
-    const authUser: AuthUser = {
-      username: match.username,
-      displayName: match.displayName,
-      role: match.role,
-      initials: match.initials,
-    };
-    setUser(authUser);
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
-    return true;
-  };
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: idToken }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "pending_approval") {
+        setIsPendingApproval(true);
+        setPendingEmail(data.email);
+        setPendingName(data.full_name);
+        return { success: false, pending: true };
+      }
+
+      if (res.ok && data.access_token) {
+        const authUser: AuthUser = {
+          id: data.user.id,
+          email: data.user.email,
+          full_name: data.user.full_name,
+          picture: data.user.picture,
+          role: data.user.role as UserRole,
+          is_verified: data.user.is_verified,
+          is_active: data.user.is_active,
+        };
+        setUser(authUser);
+        setToken(data.access_token);
+        setIsPendingApproval(false);
+        sessionStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ user: authUser, token: data.access_token })
+        );
+        return { success: true };
+      }
+
+      return { success: false };
+    } catch {
+      return { success: false };
+    }
+  }, []);
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem(SESSION_KEY);
+    setToken(null);
+    setIsPendingApproval(false);
+    setPendingEmail("");
+    setPendingName("");
+    sessionStorage.removeItem(STORAGE_KEY);
   };
 
+  const isAdmin = user?.role === "admin";
+  const isAdminOrManager = user?.role === "admin" || user?.role === "manager";
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isPendingApproval,
+        pendingEmail,
+        pendingName,
+        loginWithGoogle,
+        logout,
+        isAdmin,
+        isAdminOrManager,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

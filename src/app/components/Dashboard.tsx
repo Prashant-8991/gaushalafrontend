@@ -190,7 +190,7 @@ export function Dashboard() {
         </div>
         <div onClick={() => navigate("/list-cattle/milking")} className="cursor-pointer">
           <KPICard icon={<Milk className="w-5 h-5 text-white" />} label="Milking" value={data?.total_milking_cow}
-            subtitle={`${kpiData.totalMilkToday}L/day total`} gradient="bg-gradient-to-br from-navy to-navy-dark" />
+            subtitle=" ." gradient="bg-gradient-to-br from-navy to-navy-dark" />
         </div>
         <KPICard icon={<Baby className="w-5 h-5 text-white" />} label="Pregnant" value={data?.total_pregnant_cow}
           subtitle="Expecting calves" gradient="bg-gradient-to-br from-pink-500 to-pink-700" />
