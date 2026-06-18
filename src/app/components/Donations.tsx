@@ -16,20 +16,22 @@ type FilterGender = "All" | "Female" | "Male";
 interface DonatedOutApi {
   name: string | null;
   tag_number: string | null;
-  donated_out_date: string | null;
-  donated_to: string | null;
+  donated_date: string | null;
+  donated: string | null;
   mobile_number: string | null;
-  animal_type: string | null;
   gender: string | null;
+  out_type: string | null;
+  animal_type?: string | null;
 }
 
 function mapDonatedOut(api: DonatedOutApi): DonationRecord {
+  const isIncoming = api.out_type === "incoming";
   const contact: DonationContact = {
-    name: api.donated_to ?? "Unknown",
-    organization: api.donated_to ?? "Unknown",
+    name: api.donated ?? "Unknown",
+    organization: api.donated ?? "Unknown",
     district: "",
     phone: api.mobile_number ?? "",
-    pocName: api.donated_to ?? "Unknown",
+    pocName: api.donated ?? "Unknown",
     pocPhone: api.mobile_number ?? "",
   };
   return {
@@ -39,8 +41,8 @@ function mapDonatedOut(api: DonatedOutApi): DonationRecord {
     cowImage: "",
     cowGender: api.gender === "Male" ? "Male" : "Female",
     cowTagNumber: api.tag_number ?? "",
-    type: "Donated Out",
-    date: api.donated_out_date ?? "",
+    type: isIncoming ? "Donated In" : "Donated Out",
+    date: api.donated_date ?? "",
     contact,
     ageAtDonation: "",
     weightAtDonation: 0,
@@ -158,7 +160,7 @@ export function Donations() {
         </div>
 
         <div className="flex bg-muted/50 rounded-lg p-0.5 border border-saffron/10">
-          {(["All", "Donated Out"] as FilterType[]).map(type => (
+          {(["All", "Donated In", "Donated Out"] as FilterType[]).map(type => (
             <button
               key={type}
               onClick={() => setFilterType(type)}
@@ -170,6 +172,11 @@ export function Donations() {
               style={{ fontSize: "0.78rem" }}
             >
               {type === "All" && "All"}
+              {type === "Donated In" && (
+                <span className="flex items-center gap-1">
+                  <ArrowDownToLine className="w-3 h-3" /> Donated In
+                </span>
+              )}
               {type === "Donated Out" && (
                 <span className="flex items-center gap-1">
                   <ArrowUpFromLine className="w-3 h-3" /> Donated Out

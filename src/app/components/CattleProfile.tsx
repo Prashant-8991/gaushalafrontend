@@ -5,6 +5,7 @@ import {
   AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X, Pencil,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid } from "recharts";
+import { useAuth } from "../auth/AuthContext";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
 interface ParentInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -39,6 +40,7 @@ function avg(arr: number[]) { return arr.length ? arr.reduce((a, b) => a + b, 0)
 export function CattleProfile() {
   const { tagNumber } = useParams<{ tagNumber: string }>();
   const navigate = useNavigate();
+  const { isAdminOrManager } = useAuth();
   const tag = tagNumber || "";
   const base = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -83,7 +85,9 @@ export function CattleProfile() {
           <div><h1 className="flex items-center gap-2 text-xl font-bold"><Flower2 className="w-5 h-5 text-saffron" />{ov?.name || tag}</h1><p className="text-sm text-muted-foreground">{ov?.tag_number} &bull; Gen {ov?.generation || "?"} &bull; {ov?.age || "—"}</p></div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(`/admin/edit/${encodeURIComponent(tag)}`)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-saffron/20 text-saffron text-sm hover:bg-saffron/5 transition-colors no-print"><Pencil className="w-4 h-4" /> Edit</button>
+          {isAdminOrManager && (
+            <button onClick={() => navigate(`/admin/edit/${encodeURIComponent(tag)}`)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-saffron/20 text-saffron text-sm hover:bg-saffron/5 transition-colors no-print"><Pencil className="w-4 h-4" /> Edit</button>
+          )}
           <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-saffron to-saffron-dark text-white text-sm hover:opacity-90"><Printer className="w-4 h-4" /> Print / PDF</button>
         </div>
       </div>

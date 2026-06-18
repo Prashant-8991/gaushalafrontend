@@ -31,12 +31,15 @@ const navItems = [
   { to: "/donations", icon: HandHeart, label: "Donations" },
 ];
 
-const adminNavItems = [
+  const adminNavItems = [
   { to: "/admin/herd", icon: ClipboardList, label: "Herd Management" },
   { to: "/admin/register", icon: PlusCircle, label: "Register Cattle" },
   { to: "/admin/daily", icon: Droplets, label: "Daily Operations" },
-  { to: "/admin/users", icon: UserCog, label: "User Management" },
 ];
+
+  const adminOnlyNavItems = [
+    { to: "/admin/users", icon: UserCog, label: "User Management" },
+  ];
 
 export function Layout() {
   return (
@@ -149,6 +152,26 @@ function LayoutInner() {
               </div>
 
               {adminNavItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
+                      isActive
+                        ? "bg-gradient-to-r from-saffron/20 to-saffron/5 text-white shadow-sm shadow-saffron/10 border border-saffron/20"
+                        : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent border border-transparent"
+                    }`
+                  }
+                >
+                  <item.icon className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
+                  <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>
+                    {item.label}
+                  </span>
+                </NavLink>
+              ))}
+
+              {user.role === "admin" && adminOnlyNavItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

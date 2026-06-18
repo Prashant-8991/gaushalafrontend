@@ -18,7 +18,7 @@ interface AuthContextValue {
   isPendingApproval: boolean;
   pendingEmail: string;
   pendingName: string;
-  loginWithGoogle: (idToken: string) => Promise<{ success: boolean; pending?: boolean }>;
+  loginWithGoogle: (idToken: string) => Promise<{ success: boolean; pending?: boolean; message?: string }>;
   logout: () => void;
   isAdmin: boolean;
   isAdminOrManager: boolean;
@@ -97,9 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true };
       }
 
-      return { success: false };
+      return { success: false, message: data.detail || "Authentication failed." };
     } catch {
-      return { success: false };
+      return { success: false, message: "Network error. Is the backend running?" };
     }
   }, []);
 

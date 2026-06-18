@@ -11,7 +11,10 @@ export function Login() {
   const [error, setError] = useState("");
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
-    if (!credentialResponse.credential) return;
+    if (!credentialResponse.credential) {
+      setError("Google did not return a credential.");
+      return;
+    }
     setLoading(true);
     setError("");
     const result = await loginWithGoogle(credentialResponse.credential);
@@ -21,7 +24,7 @@ export function Login() {
     } else if (result.pending) {
       navigate("/pending-approval", { replace: true });
     } else {
-      setError("Authentication failed. Please try again.");
+      setError(result.message || "Authentication failed. Please try again.");
     }
   };
 

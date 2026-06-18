@@ -1,8 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle, Loader2, AlertTriangle, Flower2, GitBranch, Shield, ChevronRight, ChevronLeft, ImagePlus, Trash2, Upload } from "lucide-react";
+import { useAuth } from "../auth/AuthContext";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+function getAuthHeaders(token: string | null) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
 const ACQUISITION_TYPES = ["BIRTH", "DONATION", "PURCHASED", "બહારથી આવેલ"];
 const PHYSICAL_TRAITS = [
   { key: "hip_width", label: "Hip Width", type: "text" }, { key: "head", label: "Head Score", type: "number" },
@@ -16,6 +23,7 @@ const PHYSICAL_TRAITS = [
 
 export function RegisterCattle() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -75,7 +83,7 @@ export function RegisterCattle() {
     if (!form.name || !form.gender) return; setLoading(true); setResult(null);
     try {
       const uploadedUrls = await uploadImages();
-      const res = await fetch(`${API}/cattle/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      const res = await fetch(`${API}/cattle/register`, { method: "POST", headers: getAuthHeaders(token), body: JSON.stringify({
         name: form.name, tag_number: form.tag_number || undefined, gender: form.gender, animal_type: form.animal_type || undefined,
         acquisition_type: form.acquisition_type || undefined, date_of_birth: form.date_of_birth || undefined,
         mother_name: form.mother_name || undefined, mother_tag_number: form.mother_tag_number || undefined,
@@ -85,8 +93,8 @@ export function RegisterCattle() {
       })});
       const data = await res.json();
       if (data.success) {
-        await fetch(`${API}/cattle/physical-logs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag_number: data.tag_number, ...Object.fromEntries(PHYSICAL_TRAITS.map(t => [t.key, physical[t.key] || "0"])) }) });
-        if (uploadedUrls.length) { const fullUrls = uploadedUrls.map(u => u.startsWith("http") ? u : `${API}${u}`); await fetch(`${API}/cattle/images/batch`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag_number: data.tag_number, images: fullUrls }) }); }
+        await fetch(`${API}/cattle/physical-logs`, { method: "POST", headers: getAuthHeaders(token), body: JSON.stringify({ tag_number: data.tag_number, ...Object.fromEntries(PHYSICAL_TRAITS.map(t => [t.key, physical[t.key] || "0"])) }) });
+        if (uploadedUrls.length) { const fullUrls = uploadedUrls.map(u => u.startsWith("http") ? u : `${API}${u}`); await fetch(`${API}/cattle/images/batch`, { method: "POST", headers: getAuthHeaders(token), body: JSON.stringify({ tag_number: data.tag_number, images: fullUrls }) }); }
       }
       setResult(data);
     } catch { setResult({ success: false, message: "Network error" }); }
