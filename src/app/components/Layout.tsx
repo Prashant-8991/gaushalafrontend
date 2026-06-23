@@ -5,12 +5,12 @@ import {
   GitBranch,
   Clock,
   Bell,
+  HandHeart,
   Menu,
   X,
   Flower2,
   Shield,
   Heart,
-  HandHeart,
   Sun,
   Moon,
   ClipboardList,
@@ -18,6 +18,7 @@ import {
   LogOut,
   PlusCircle,
   Droplets,
+  Table2,
 } from "lucide-react";
 import { Toaster } from "./ui/sonner";
 import { CardThemeProvider, useCardTheme } from "./CardThemeContext";
@@ -33,6 +34,7 @@ const navItems = [
 
   const adminNavItems = [
   { to: "/admin/herd", icon: ClipboardList, label: "Herd Management" },
+  { to: "/admin/report", icon: Table2, label: "Report" },
   { to: "/admin/register", icon: PlusCircle, label: "Register Cattle" },
   { to: "/admin/daily", icon: Droplets, label: "Daily Operations" },
 ];

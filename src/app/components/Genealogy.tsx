@@ -73,6 +73,24 @@ const ANIMAL_ICONS: Record<string, string> = {
   BULL: "🐂", COW: "🐄", OX: "🐂", "MALE CALF": "🐃", "FEMALE CALF": "🐄",
 };
 
+const GENDER_ICON: Record<string, string> = {
+  Male: "🐂",
+  Female: "🐄",
+};
+
+const GENDER_AVATAR_BG: Record<string, string> = {
+  Male: "from-blue-400 to-blue-700",
+  Female: "from-pink-400 to-pink-600",
+};
+
+const STATUS_EMOJI: Record<string, string> = {
+  Milking: "🥛",
+  Pregnant: "🤰",
+  Calf: "🐮",
+  Bull: "🐂",
+  Dry: "🐄",
+};
+
 export function Genealogy() {
   const [selectedCow, setSelectedCow] = useState<GenealogyCattle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -143,7 +161,7 @@ export function Genealogy() {
   const filteredCows = useMemo(() => cows.filter(matchFilters), [cows, matchFilters]);
 
   const foundationCows = useMemo(() =>
-    filteredCows.filter(c => c.mother_tag_number === null && c.father_tag_number === null),
+    filteredCows.filter(c => c.mother_tag_number === null),
     [filteredCows],
   );
 
@@ -501,15 +519,16 @@ export function Genealogy() {
             </div>
           </div>
 
-          {/* <div className="flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 border-t border-saffron/10 bg-muted/10">
+          <div className="flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 border-t border-saffron/10 bg-muted/10">
             {[
-              { color: "bg-green-400", label: "Milking" },
-              { color: "bg-pink-400", label: "Pregnant" },
-              { color: "bg-cyan-400", label: "Calf" },
-              { color: "bg-[#1B3A6B]", label: "Bull" },
-              { color: "bg-gray-300", label: "Dry" },
+              { emoji: "🥛", color: "bg-green-400", label: "Milking" },
+              { emoji: "🤰", color: "bg-pink-400", label: "Pregnant" },
+              { emoji: "🐮", color: "bg-cyan-400", label: "Calf" },
+              { emoji: "🐂", color: "bg-[#1B3A6B]", label: "Bull" },
+              { emoji: "🐄", color: "bg-gray-300", label: "Dry" },
             ].map(l => (
               <div key={l.label} className="flex items-center gap-1">
+                <span style={{ fontSize: '0.8rem' }}>{l.emoji}</span>
                 <div className={`w-2.5 h-2.5 rounded-full ${l.color}`} />
                 <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">{l.label}</span>
               </div>
@@ -520,14 +539,14 @@ export function Genealogy() {
               <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Mother → Child</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-full border-2 border-saffron" />
-              <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Female</span>
+              <span style={{ fontSize: '0.8rem' }}>🐄</span>
+              <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Female (round)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded border-2 border-navy" />
-              <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Male</span>
+              <span style={{ fontSize: '0.8rem' }}>🐂</span>
+              <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Male (square)</span>
             </div>
-          </div> */}
+          </div>
         </div>
       )}
 
@@ -619,8 +638,8 @@ function VisualTreeNode({
           onClick={() => onSelect(cow)}
         >
           <div className={`relative w-11 h-11 ${cow.gender === "Female" ? "rounded-full" : "rounded-lg"} overflow-hidden ring-[2.5px] shadow-md ${STATUS_RING[status] || "ring-gray-300"}`}>
-            <div className="w-full h-full bg-gradient-to-br from-saffron/20 to-navy/20 flex items-center justify-center text-[0.9rem] font-bold text-saffron">
-              {cow.name.charAt(0).toUpperCase()}
+            <div className={`w-full h-full bg-gradient-to-br ${GENDER_AVATAR_BG[cow.gender] || "from-saffron/20 to-navy/20"} flex items-center justify-center`}>
+              <span style={{ fontSize: '1.2rem' }}>{STATUS_EMOJI[status] || GENDER_ICON[cow.gender] || "🐄"}</span>
             </div>
             <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ${STATUS_BG[status] || "bg-gray-400"} border-2 border-white`} />
           </div>
@@ -722,8 +741,8 @@ function CowTile({ cow, onClick }: { cow: GenealogyCattle; onClick: (c: Genealog
       onClick={() => onClick(cow)}
       className="bg-white rounded-xl border border-saffron/10 p-2.5 hover:shadow-md hover:shadow-saffron/10 transition-shadow flex flex-col items-center"
     >
-      <div className={`w-11 h-11 rounded-full overflow-hidden border-2 ${cow.gender === "Female" ? "border-saffron/30" : "border-navy/30"} bg-gradient-to-br from-saffron/10 to-navy/10 flex items-center justify-center`}>
-        <span className="text-[0.8rem] font-bold text-saffron">{cow.name.charAt(0).toUpperCase()}</span>
+      <div className={`w-11 h-11 rounded-full overflow-hidden border-2 ${cow.gender === "Female" ? "border-pink-300" : "border-blue-300"} bg-gradient-to-br ${GENDER_AVATAR_BG[cow.gender] || "from-saffron/10 to-navy/10"} flex items-center justify-center`}>
+        <span style={{ fontSize: '1.2rem' }}>{STATUS_EMOJI[status] || GENDER_ICON[cow.gender] || "🐄"}</span>
       </div>
       <p style={{ fontSize: '0.7rem', fontWeight: 600 }} className="mt-1 truncate w-full text-center">{cow.name}</p>
       <p style={{ fontSize: '0.55rem' }} className="text-muted-foreground">{cow.tag_number}</p>

@@ -135,7 +135,10 @@ export function AllCattle() {
       const matchAnimal = animalFilter.length === 0 || animalFilter.includes(c.animal_type);
       const matchMilking = milkingFilter === null || (milkingFilter ? c.is_milking === 1 : c.is_milking === 0 || c.is_milking === null);
       const matchPregnant = pregnantFilter === null || (pregnantFilter ? c.is_pregnant === 1 : c.is_pregnant === 0 || c.is_pregnant === null);
-      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant;
+      const onlyFemale = c.gender === "Female";
+      const excludeMaleForMilking = milkingFilter !== null ? onlyFemale : true;
+      const excludeMaleForPregnant = pregnantFilter !== null ? onlyFemale : true;
+      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant && excludeMaleForMilking && excludeMaleForPregnant;
     });
   }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter]);
 
@@ -381,7 +384,7 @@ export function AllCattle() {
                   Milking Status
                 </p>
                 <div className="flex gap-2">
-                  {[{ label: "Milking", value: true }].map(o => (
+                  {[{ label: "Milking", value: true }, {label: "Not Milking", value: false}].map(o => (
                     <button key={o.label} onClick={() => setMilkingFilter(milkingFilter === o.value ? null : o.value)}
                       className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${milkingFilter === o.value
                         ? "bg-navy text-white border-navy shadow"
