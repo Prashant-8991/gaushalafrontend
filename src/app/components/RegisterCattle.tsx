@@ -56,12 +56,16 @@ export function RegisterCattle() {
   const sf = (key: string, val: any) => setForm(p => ({ ...p, [key]: val }));
   const removeImageFile = (i: number) => setImageFiles(p => p.filter((_, idx) => idx !== i));
 
-  const searchCattle = useCallback(async (q: string, cb: (r: any[]) => void) => {
+  const searchCattle = useCallback(async (type: "mother" | "father", q: string, cb: (r: any[]) => void) => {
     if (!q?.trim()) { cb([]); return; }
-    try { const r = await fetch(`${API}/cattle-search?q=${encodeURIComponent(q)}`); cb(await r.json() || []); } catch { cb([]); }
+    try {
+      const endpoint = type === "father" ? "/cattle/fathers" : "/cattle/mothers";
+      const r = await fetch(`${API}${endpoint}?q=${encodeURIComponent(q)}`);
+      cb(await r.json() || []);
+    } catch { cb([]); }
   }, []);
-  useEffect(() => { searchCattle(motherSearch, setMotherResults); }, [motherSearch]);
-  useEffect(() => { searchCattle(fatherSearch, setFatherResults); }, [fatherSearch]);
+  useEffect(() => { searchCattle("mother", motherSearch, setMotherResults); }, [motherSearch]);
+  useEffect(() => { searchCattle("father", fatherSearch, setFatherResults); }, [fatherSearch]);
 
   const selectParent = (type: "mother" | "father", row: any) => {
     if (type === "mother") { sf("mother_tag_number", row.tag_number); sf("mother_name", row.name); setMotherSearch(row.name); setMotherResults([]); setMotherOpen(false); }

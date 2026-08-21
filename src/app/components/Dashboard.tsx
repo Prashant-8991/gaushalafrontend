@@ -72,6 +72,48 @@ export function Dashboard() {
     queryFn: getDashboardData
   });
 
+  interface TopMilkerCurrentMonth {
+    tag_number: string;
+    name: string;
+    total_milk: number;
+    avg_milk: number | null;
+    days_logged: number | null;
+    gender: string | null;
+    animal_type: string | null;
+  }
+
+  const getTopMilkersCurrentMonth = async (): Promise<TopMilkerCurrentMonth[]> => {
+    const res = await fetch(`${API_BASE}/dashboard/top-milkers-current-month`);
+    if (!res.ok) throw new Error("Failed to fetch top milkers");
+    return res.json();
+  };
+
+  const { data: currentMonthMilkers } = useQuery({
+    queryKey: ["top-milkers-current-month"],
+    queryFn: getTopMilkersCurrentMonth,
+  });
+
+  interface BottomMilkerCurrentMonth {
+    tag_number: string;
+    name: string;
+    total_milk: number;
+    avg_milk: number | null;
+    days_logged: number | null;
+    gender: string | null;
+    animal_type: string | null;
+  }
+
+  const getBottomMilkersCurrentMonth = async (): Promise<BottomMilkerCurrentMonth[]> => {
+    const res = await fetch(`${API_BASE}/dashboard/bottom-milkers-current-month`);
+    if (!res.ok) throw new Error("Failed to fetch bottom milkers");
+    return res.json();
+  };
+
+  const { data: currentMonthBottomMilkers } = useQuery({
+    queryKey: ["bottom-milkers-current-month"],
+    queryFn: getBottomMilkersCurrentMonth,
+  });
+
 
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
   const [fsChart, setFsChart] = useState(false);
@@ -650,6 +692,136 @@ export function Dashboard() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ───── Top 10 Milking Cows — Current Month ───── */}
+      <div className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-lg shadow-emerald-100/50">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+              <Droplets className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">Top 10 Milking Cows — Current Month</h3>
+              <p className="text-xs text-emerald-100">
+                {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })} leaderboard by total milk
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {currentMonthMilkers && currentMonthMilkers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+              {currentMonthMilkers.map((cow, i) => (
+                <button
+                  key={cow.tag_number}
+                  onClick={() => navigate(`/cattle/${encodeURIComponent(cow.tag_number)}`)}
+                  className="group relative flex items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-white to-emerald-50/40 p-3 text-left hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                >
+                  <div className="relative shrink-0">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold ${i === 0 ? "bg-gradient-to-br from-amber-400 to-amber-600" : i === 1 ? "bg-gradient-to-br from-slate-400 to-slate-600" : i === 2 ? "bg-gradient-to-br from-orange-400 to-orange-700" : "bg-gradient-to-br from-emerald-500 to-teal-600"}`}>
+                      <SiHappycow size={24} />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-500 text-white text-[0.6rem] font-bold flex items-center justify-center shadow">
+                      {i + 1}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate text-sm">{cow.name}</p>
+                    <p className="text-[0.6rem] text-muted-foreground">#{cow.tag_number}</p>
+                    <p className="text-[0.55rem] text-muted-foreground">{cow.animal_type || cow.gender || ""}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs">
+                      {cow.total_milk} L
+                    </div>
+                    {cow.avg_milk != null && (
+                      <p className="text-[0.5rem] mt-0.5 text-muted-foreground">
+                        Avg {cow.avg_milk} L/day
+                      </p>
+                    )}
+                    {cow.days_logged != null && (
+                      <p className="text-[0.5rem] text-muted-foreground">
+                        {cow.days_logged} days
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Droplets className="w-10 h-10 text-emerald-300 mb-2" />
+              <p className="text-sm text-muted-foreground">No milk data recorded for this month yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ───── Bottom 10 Milking Cows — Current Month ───── */}
+      <div className="overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-lg shadow-rose-100/50">
+        <div className="bg-gradient-to-r from-rose-600 to-pink-600 p-5 text-white">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+              <Droplets className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">Bottom 10 Milking Cows — Current Month</h3>
+              <p className="text-xs text-rose-100">
+                {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })} cows with lowest milk production
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {currentMonthBottomMilkers && currentMonthBottomMilkers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+              {currentMonthBottomMilkers.map((cow, i) => (
+                <button
+                  key={cow.tag_number}
+                  onClick={() => navigate(`/cattle/${encodeURIComponent(cow.tag_number)}`)}
+                  className="group relative flex items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-white to-rose-50/40 p-3 text-left hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                >
+                  <div className="relative shrink-0">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold ${i === 0 ? "bg-gradient-to-br from-rose-500 to-rose-700" : i === 1 ? "bg-gradient-to-br from-orange-400 to-orange-600" : i === 2 ? "bg-gradient-to-br from-amber-400 to-amber-600" : "bg-gradient-to-br from-rose-400 to-pink-600"}`}>
+                      <SiHappycow size={24} />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-rose-500 text-white text-[0.6rem] font-bold flex items-center justify-center shadow">
+                      {i + 1}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate text-sm">{cow.name}</p>
+                    <p className="text-[0.6rem] text-muted-foreground">#{cow.tag_number}</p>
+                    <p className="text-[0.55rem] text-muted-foreground">{cow.animal_type || cow.gender || ""}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="px-2 py-1 rounded-full bg-rose-100 text-rose-700 font-bold text-xs">
+                      {cow.total_milk} L
+                    </div>
+                    {cow.avg_milk != null && (
+                      <p className="text-[0.5rem] mt-0.5 text-muted-foreground">
+                        Avg {cow.avg_milk} L/day
+                      </p>
+                    )}
+                    {cow.days_logged != null && (
+                      <p className="text-[0.5rem] text-muted-foreground">
+                        {cow.days_logged} days
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Droplets className="w-10 h-10 text-rose-300 mb-2" />
+              <p className="text-sm text-muted-foreground">No milk data recorded for this month yet.</p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid } from "recharts";
 import { useAuth } from "../auth/AuthContext";
+import { ReproductionTimeline, ReproductionTimelineData } from "./ReproductionTimeline";
+import { WeightChart, WeightTimelineData } from "./WeightChart";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
 interface ParentInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -45,6 +47,8 @@ export function CattleProfile() {
   const base = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const [apiData, setApiData] = useState<CattleCardResponse | null>(null);
+  const [timelineData, setTimelineData] = useState<ReproductionTimelineData | null>(null);
+  const [weightData, setWeightData] = useState<WeightTimelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fullscreenChart, setFullscreenChart] = useState<"monthly" | "daily" | null>(null);
@@ -65,8 +69,12 @@ export function CattleProfile() {
 
   useEffect(() => { if (!tag) { setLoading(false); return; }
     let c = false; setLoading(true);
-    fetch(`${base}/cattle-card/${tag}`).then(r => { if (!r.ok) throw new Error("Not found"); return r.json(); })
-      .then(d => { if (!c) { setApiData(d); setLoading(false); } })
+    Promise.all([
+      fetch(`${base}/cattle-card/${tag}`).then(r => { if (!r.ok) throw new Error("Not found"); return r.json(); }),
+      fetch(`${base}/cattle/${encodeURIComponent(tag)}/reproduction-timeline`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${base}/cattle/${encodeURIComponent(tag)}/weight-timeline`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ])
+      .then(([d, tl, wt]) => { if (!c) { setApiData(d); setTimelineData(tl); setWeightData(wt); setLoading(false); } })
       .catch(e => { if (!c) { setFetchError(e.message); setLoading(false); } });
     return () => { c = true; };
   }, [tag]);
@@ -171,8 +179,14 @@ export function CattleProfile() {
           </Section>
 
           {/* WEIGHT */}
-          <Section icon={<Scale className="w-4 h-4" />} title="Weight">
-            <Field label="Weight at Birth" value={ov?.weight || "—"} />
+          <Section icon={<Scale className="w-4 h-4" />} title="Weight History">
+            {weightData ? (
+              <WeightChart data={weightData} />
+            ) : (
+              <div className="bg-muted/20 rounded-xl p-4">
+                <p className="text-sm text-muted-foreground">Weight at birth: <span className="font-medium text-foreground">{ov?.weight || "—"}</span></p>
+              </div>
+            )}
           </Section>
 
           {/* FAMILY */}
@@ -243,6 +257,13 @@ export function CattleProfile() {
               </div>
             ) : <p className="text-sm text-muted-foreground">No pregnancy records found.</p>}
           </Section>
+
+          {/* REPRODUCTION & FAMILY TIMELINE */}
+          {timelineData && (
+            <Section icon={<GitBranch className="w-4 h-4" />} title="Reproduction & Family Timeline">
+              <ReproductionTimeline data={timelineData} />
+            </Section>
+          )}
 
           {/* BREED SCORE */}
           {bs && breedScores.length > 0 && (

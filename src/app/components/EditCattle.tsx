@@ -47,6 +47,12 @@ export function EditCattle() {
   const [newPreg, setNewPreg] = useState({ conception_date: "", birth_date: "" });
   const [newMilk, setNewMilk] = useState({ date: "", milk: "" });
   const [milkMonth, setMilkMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
+  const [motherSearch, setMotherSearch] = useState("");
+  const [fatherSearch, setFatherSearch] = useState("");
+  const [motherResults, setMotherResults] = useState<any[]>([]);
+  const [fatherResults, setFatherResults] = useState<any[]>([]);
+  const [motherOpen, setMotherOpen] = useState(false);
+  const [fatherOpen, setFatherOpen] = useState(false);
 
   useEffect(() => { if (!tag) return;
     Promise.all([
@@ -90,6 +96,65 @@ export function EditCattle() {
   const showMsg = (ok: boolean, text: string) => { setMsg({ ok, text }); setTimeout(() => setMsg(null), 4000); };
   const toggle = (s: string) => setExpanded(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
   const sf = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+
+  const searchParent = async (type: "mother" | "father", q: string) => {
+    if (!q?.trim()) {
+      if (type === "mother") setMotherResults([]);
+      else setFatherResults([]);
+      return;
+    }
+    try {
+      const endpoint = type === "father" ? "/cattle/fathers" : "/cattle/mothers";
+      const r = await fetch(`${API}${endpoint}?q=${encodeURIComponent(q)}`);
+      const data = await r.json();
+      if (type === "mother") setMotherResults(data || []);
+      else setFatherResults(data || []);
+    } catch {
+      if (type === "mother") setMotherResults([]);
+      else setFatherResults([]);
+    }
+  };
+  useEffect(() => { searchParent("mother", motherSearch); }, [motherSearch]);
+  useEffect(() => { searchParent("father", fatherSearch); }, [fatherSearch]);
+
+  const selectParent = async (type: "mother" | "father", row: any) => {
+    const nextF = type === "mother"
+      ? { ...f, mother_tag_number: row.tag_number, mother_name: row.name }
+      : { ...f, father_tag_number: row.tag_number, father_name: row.name };
+    setF(nextF);
+    if (type === "mother") {
+      setMotherSearch(row.name);
+      setMotherResults([]);
+      setMotherOpen(false);
+    } else {
+      setFatherSearch(row.name);
+      setFatherResults([]);
+      setFatherOpen(false);
+    }
+    try {
+      await saveCattleUpdate(nextF);
+      showMsg(true, `${type === "mother" ? "Mother" : "Father"} updated to ${row.name}`);
+    } catch (e: any) {
+      showMsg(false, e.message || "Update failed");
+      setF(f);
+    }
+  };
+
+  const clearParent = async (type: "mother" | "father") => {
+    const nextF = type === "mother"
+      ? { ...f, mother_tag_number: null, mother_name: null }
+      : { ...f, father_tag_number: null, father_name: null };
+    setF(nextF);
+    if (type === "mother") setMotherSearch("");
+    else setFatherSearch("");
+    try {
+      await saveCattleUpdate(nextF);
+      showMsg(true, `${type === "mother" ? "Mother" : "Father"} cleared`);
+    } catch (e: any) {
+      showMsg(false, e.message || "Update failed");
+      setF(f);
+    }
+  };
 
   const buildUpdatePayload = (nextF: any) => ({
     name: nextF.name,
@@ -278,11 +343,33 @@ export function EditCattle() {
 
       {/* FAMILY */}
       <Card icon={<GitBranch className="w-4 h-4" />} title="Family" open={expanded.includes("family")} onToggle={() => toggle("family")}>
-        <div className="grid grid-cols-2 gap-y-1 gap-x-4">
-          <IRow label="Mother Name" field="mother_name" val={f.mother_name || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("mother_name", f.mother_name)} onSave={() => saveEdit("mother_name")} onCancel={() => setEditing(null)} />
-          <IRow label="Mother Tag" field="mother_tag_number" val={f.mother_tag_number || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("mother_tag_number", f.mother_tag_number)} onSave={() => saveEdit("mother_tag_number")} onCancel={() => setEditing(null)} />
-          <IRow label="Father Name" field="father_name" val={f.father_name || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("father_name", f.father_name)} onSave={() => saveEdit("father_name")} onCancel={() => setEditing(null)} />
-          <IRow label="Father Tag" field="father_tag_number" val={f.father_tag_number || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("father_tag_number", f.father_tag_number)} onSave={() => saveEdit("father_tag_number")} onCancel={() => setEditing(null)} />
+        <div className="space-y-3">
+          <ParentSearch
+            label="Mother"
+            placeholder="Search a mother cow by name or tag..."
+            search={motherSearch}
+            setSearch={setMotherSearch}
+            results={motherResults}
+            open={motherOpen}
+            setOpen={setMotherOpen}
+            selectedTag={f.mother_tag_number}
+            selectedName={f.mother_name}
+            onSelect={(r: any) => selectParent("mother", r)}
+            onClear={() => clearParent("mother")}
+          />
+          <ParentSearch
+            label="Father"
+            placeholder="Search a bull father by name or tag..."
+            search={fatherSearch}
+            setSearch={setFatherSearch}
+            results={fatherResults}
+            open={fatherOpen}
+            setOpen={setFatherOpen}
+            selectedTag={f.father_tag_number}
+            selectedName={f.father_name}
+            onSelect={(r: any) => selectParent("father", r)}
+            onClear={() => clearParent("father")}
+          />
         </div>
       </Card>
 
@@ -367,7 +454,35 @@ export function EditCattle() {
 }
 
 function Card({ icon, title, open, onToggle, children }: any) {
-  return <div className="bg-white rounded-2xl border border-saffron/10 overflow-hidden shadow-sm"><button onClick={onToggle} className="w-full flex items-center justify-between p-4 hover:bg-muted/30 text-left"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl bg-saffron/10 flex items-center justify-center">{icon}</div><h3 className="font-semibold text-sm">{title}</h3></div><ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} /></button>{open && <div className="px-4 pb-4">{children}</div>}</div>;
+  return <div className="bg-white rounded-2xl border border-saffron/10 shadow-sm"><button onClick={onToggle} className="w-full flex items-center justify-between p-4 hover:bg-muted/30 text-left"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl bg-saffron/10 flex items-center justify-center">{icon}</div><h3 className="font-semibold text-sm">{title}</h3></div><ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} /></button>{open && <div className="px-4 pb-4">{children}</div>}</div>;
+}
+
+function ParentSearch({ label, placeholder, search, setSearch, results, open, setOpen, selectedTag, selectedName, onSelect, onClear }: any) {
+  return <div>
+    <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
+    {selectedTag ? (
+      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+        <div><span className="text-sm font-medium">{selectedName || selectedTag}</span><span className="text-xs text-muted-foreground ml-2">{selectedTag}</span></div>
+        <button type="button" onClick={onClear} className="text-xs text-red-500 hover:underline">Remove</button>
+      </div>
+    ) : (
+      <div className="relative">
+        <input value={search} onChange={e => { setSearch(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 250)}
+          placeholder={placeholder} className="w-full px-3 py-2.5 rounded-lg border border-saffron/20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-saffron/30" />
+        {open && results.length > 0 && (
+          <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-saffron/10 shadow-lg max-h-48 overflow-y-auto">
+            {results.map((r: any) => (
+              <button key={r.tag_number} type="button" onMouseDown={() => onSelect(r)} className="w-full text-left px-3 py-2 text-sm hover:bg-saffron/5 border-b border-saffron/5 last:border-0 flex items-center justify-between">
+                <span className="font-medium">{r.name}</span>
+                <span className="text-xs text-muted-foreground">{r.tag_number} &bull; {r.animal_type || ""}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {open && search && results.length === 0 && <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-saffron/10 shadow-lg p-3 text-sm text-muted-foreground text-center">No {label.toLowerCase()}s found</div>}
+      </div>
+    )}
+  </div>;
 }
 
 function IRow({ label, field, val, editing, editVal, setEditVal, onEdit, onSave, onCancel, type = "text", options }: any) {

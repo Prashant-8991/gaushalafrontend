@@ -1,7 +1,16 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Plus, Search, Edit2, Save, X, ChevronDown, ChevronUp, Check, AlertTriangle, Upload, ChevronLeft, ChevronRight, Droplets } from "lucide-react";
 import { cows, Cow, CowStatus, CowSource } from "../data/mockData";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+interface ParentOption {
+  tag_number: string;
+  name: string;
+  gender: string | null;
+  animal_type: string | null;
+}
 
 type Tab = "add" | "edit";
 
@@ -532,6 +541,8 @@ function CowFormFields({
   submitLabel,
   onSubmit,
   onCancel,
+  mothers,
+  fathers,
 }: {
   form: CowForm;
   setField: (key: keyof CowForm, val: string) => void;
@@ -541,16 +552,9 @@ function CowFormFields({
   submitLabel: string;
   onSubmit: (e: React.FormEvent) => void;
   onCancel?: () => void;
+  mothers: ParentOption[];
+  fathers: ParentOption[];
 }) {
-  const femaleCows = useMemo(
-    () => cows.filter(c => c.gender === "Female" && c.status !== "Deceased" && c.status !== "Donated Out"),
-    []
-  );
-  const maleCows = useMemo(
-    () => cows.filter(c => c.gender === "Male" && c.status !== "Deceased" && c.status !== "Donated Out"),
-    []
-  );
-
   const statuses = form.gender === "Female" ? STATUSES_FEMALE : STATUSES_MALE;
   const isMilking = form.status === "Milking" || form.status === "Pregnant";
   const isPregnant = form.status === "Pregnant";
@@ -643,8 +647,8 @@ function CowFormFields({
               onChange={e => setField("motherId", e.target.value)}
             >
               <option value="">— None / Unknown —</option>
-              {femaleCows.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.tagNumber})</option>
+              {mothers.map(m => (
+                <option key={m.tag_number} value={m.tag_number}>{m.name} ({m.tag_number})</option>
               ))}
             </select>
           </Field>
@@ -655,8 +659,8 @@ function CowFormFields({
               onChange={e => setField("fatherId", e.target.value)}
             >
               <option value="">— None / Sperm Donation —</option>
-              {maleCows.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.tagNumber})</option>
+              {fathers.map(f => (
+                <option key={f.tag_number} value={f.tag_number}>{f.name} ({f.tag_number})</option>
               ))}
             </select>
           </Field>
@@ -855,6 +859,15 @@ function AddCowPanel() {
   const [form, setForm] = useState<CowForm>({ ...EMPTY_FORM, breedScore: { ...DEFAULT_BREED_SCORE } });
   const [milkLog, setMilkLog] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [mothers, setMothers] = useState<ParentOption[]>([]);
+  const [fathers, setFathers] = useState<ParentOption[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/cattle/parent-options`)
+      .then(r => r.json())
+      .then(d => { setMothers(d.mothers || []); setFathers(d.fathers || []); })
+      .catch(() => {});
+  }, []);
 
   const setField = (key: keyof CowForm, val: string) =>
     setForm(f => ({ ...f, [key]: val }));
@@ -882,6 +895,8 @@ function AddCowPanel() {
         setMilkLog={setMilkLog}
         submitLabel="Add Cow"
         onSubmit={handleSubmit}
+        mothers={mothers}
+        fathers={fathers}
       />
     </div>
   );
@@ -895,6 +910,15 @@ function EditCowPanel() {
   const [form, setForm] = useState<CowForm>({ ...EMPTY_FORM, breedScore: { ...DEFAULT_BREED_SCORE } });
   const [milkLog, setMilkLog] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [mothers, setMothers] = useState<ParentOption[]>([]);
+  const [fathers, setFathers] = useState<ParentOption[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/cattle/parent-options`)
+      .then(r => r.json())
+      .then(d => { setMothers(d.mothers || []); setFathers(d.fathers || []); })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -1037,6 +1061,8 @@ function EditCowPanel() {
               submitLabel="Save Changes"
               onSubmit={handleSubmit}
               onCancel={handleCancel}
+              mothers={mothers}
+              fathers={fathers}
             />
           </div>
         ) : (

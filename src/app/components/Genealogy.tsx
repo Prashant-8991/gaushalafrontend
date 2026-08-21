@@ -1,15 +1,19 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Filter, GitBranch, ChevronDown, ChevronRight,
-  Baby, Layers, ZoomIn, ZoomOut, Maximize2, Focus, X, Loader2, AlertTriangle,
+  Baby, Layers, ZoomIn, ZoomOut, Maximize2, Minimize2, Focus, X, Loader2, AlertTriangle,
   SlidersHorizontal,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import * as echarts from "echarts";
 import { CowCard } from "./CowCard";
 import type { Cow } from "../data/mockData";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type ViewMode = "tree" | "grid" | "generation";
+type LineageBase = "mother" | "father";
 
 interface GenealogyCattle {
   tag_number: string;
@@ -99,6 +103,7 @@ export function Genealogy() {
   const [zoom, setZoom] = useState(1.05);
   const [maxDepth, setMaxDepth] = useState(3);
   const [showFilters, setShowFilters] = useState(false);
+  const [lineageBase, setLineageBase] = useState<LineageBase>("mother");
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
   /* ─── Filter state ─── */
@@ -109,26 +114,30 @@ export function Genealogy() {
   const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
   const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
 
-  /* ─── API fetch ─── */
+  /* ─── API fetch (mother → /genealogy/all, father → /genealogy/fathers) ─── */
   const { data: cattleList, isLoading, error } = useQuery<GenealogyCattle[]>({
-    queryKey: ["genealogy-all"],
-    queryFn: () => { const base = import.meta.env.VITE_API_URL || "http://localhost:8000"; return fetch(`${base}/genealogy/all`).then(r => { if (!r.ok) throw new Error("API error"); return r.json(); }) },
+    queryKey: ["genealogy", lineageBase],
+    queryFn: () => {
+      const endpoint = lineageBase === "father" ? "/genealogy/fathers" : "/genealogy/all";
+      return fetch(`${API_BASE}${endpoint}`).then(r => { if (!r.ok) throw new Error("API error"); return r.json(); });
+    },
   });
 
   const cows = cattleList ?? [];
 
-  /* ─── Children map for tree ─── */
+  /* ─── Children map for tree (follows mother OR father lineage) ─── */
   const childrenMap = useMemo(() => {
     const map = new Map<string, GenealogyCattle[]>();
     for (const c of cows) {
-      if (c.mother_tag_number) {
-        const arr = map.get(c.mother_tag_number) ?? [];
+      const parentTag = lineageBase === "mother" ? c.mother_tag_number : c.father_tag_number;
+      if (parentTag) {
+        const arr = map.get(parentTag) ?? [];
         arr.push(c);
-        map.set(c.mother_tag_number, arr);
+        map.set(parentTag, arr);
       }
     }
     return map;
-  }, [cows]);
+  }, [cows, lineageBase]);
 
   const getChildren = useCallback((tag: string): GenealogyCattle[] => childrenMap.get(tag) ?? [], [childrenMap]);
 
@@ -161,8 +170,10 @@ export function Genealogy() {
   const filteredCows = useMemo(() => cows.filter(matchFilters), [cows, matchFilters]);
 
   const foundationCows = useMemo(() =>
-    filteredCows.filter(c => c.mother_tag_number === null),
-    [filteredCows],
+    lineageBase === "mother"
+      ? filteredCows.filter(c => c.mother_tag_number === null)
+      : filteredCows.filter(c => c.father_tag_number === null),
+    [filteredCows, lineageBase],
   );
 
   const activeFilterCount =
@@ -281,6 +292,30 @@ export function Genealogy() {
             </span>
           )}
         </button>
+      </div>
+
+      {/* ───── Lineage Base Toggle (Mother / Father) ───── */}
+      <div className="bg-white dark:bg-navy rounded-xl border border-saffron/15 p-3 flex flex-wrap items-center gap-3">
+        <span style={{ fontSize: '0.7rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <GitBranch className="w-4 h-4 text-saffron" /> Genealogy Base
+        </span>
+        <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5 border border-saffron/10">
+          <button onClick={() => { setLineageBase("mother"); setFocusedRoot(null); }}
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${lineageBase === "mother" ? "bg-saffron text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`} style={{ fontSize: '0.75rem', fontWeight: 500 }}>
+            🐄 Mother Lineage
+          </button>
+          <button onClick={() => { setLineageBase("father"); setFocusedRoot(null); }}
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${lineageBase === "father" ? "bg-saffron text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`} style={{ fontSize: '0.75rem', fontWeight: 500 }}>
+            🐂 Father Lineage
+          </button>
+        </div>
+        <span style={{ fontSize: '0.7rem' }} className="text-muted-foreground">
+          {lineageBase === "mother"
+            ? "Tree built from mother_tag_number — roots are cows with no mother"
+            : "Tree built from father_tag_number — roots are bulls with no father"}
+        </span>
       </div>
 
       {/* ───── Filter Panel ───── */}
@@ -468,7 +503,9 @@ export function Genealogy() {
                 </div>
               ) : (
                 <span style={{ fontSize: '0.75rem' }} className="text-muted-foreground">
-                  Showing {foundationCows.length} foundation lineages &bull; Top-down family tree
+                  {lineageBase === "mother"
+                    ? `Showing ${foundationCows.length} maternal lineages (mother → child)`
+                    : `Showing ${foundationCows.length} paternal lineages (father → child)`}
                 </span>
               )}
             </div>
@@ -497,26 +534,26 @@ export function Genealogy() {
           </div>
 
           <div ref={treeContainerRef}
-            className="overflow-auto p-8 bg-gradient-to-b from-[#faf8f5] to-[#f5f0ea]"
-            style={{ maxHeight: "70vh" }}>
-            <div style={{ transform: `scale(${zoom})`, transformOrigin: "top center", transition: "transform 0.2s ease" }}>
-              {focusedRoot ? (
-                <div className="flex justify-center">
-                  <VisualTreeNode cow={focusedRoot} onSelect={setSelectedCow} onFocus={setFocusedRoot} getChildren={getChildren} depth={0} maxDepth={maxDepth} />
-                </div>
-              ) : (
-                <div className="flex flex-wrap justify-center gap-12">
-                  {foundationCows.map(cow => (
-                    <div key={cow.tag_number} className="flex flex-col items-center">
-                      <VisualTreeNode cow={cow} onSelect={setSelectedCow} onFocus={setFocusedRoot} getChildren={getChildren} depth={0} maxDepth={maxDepth} />
-                    </div>
-                  ))}
-                  {foundationCows.length === 0 && (
-                    <p className="text-muted-foreground text-sm py-10">No cattle match the current filters</p>
-                  )}
-                </div>
-              )}
-            </div>
+            className="overflow-auto p-6 bg-gradient-to-b from-[#faf8f5] to-[#f5f0ea]"
+            style={{ maxHeight: "72vh" }}>
+            {lineageBase === "father" ? (
+              <FatherColorGraph roots={foundationCows} getChildren={getChildren} onSelect={setSelectedCow} />
+            ) : focusedRoot ? (
+              <div className="flex justify-center">
+                <VisualTreeNode cow={focusedRoot} onSelect={setSelectedCow} onFocus={setFocusedRoot} getChildren={getChildren} depth={0} maxDepth={maxDepth} />
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-12">
+                {foundationCows.map(cow => (
+                  <div key={cow.tag_number} className="flex flex-col items-center">
+                    <VisualTreeNode cow={cow} onSelect={setSelectedCow} onFocus={setFocusedRoot} getChildren={getChildren} depth={0} maxDepth={maxDepth} />
+                  </div>
+                ))}
+                {foundationCows.length === 0 && (
+                  <p className="text-muted-foreground text-sm py-10">No cattle match the current filters</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 border-t border-saffron/10 bg-muted/10">
@@ -536,7 +573,9 @@ export function Genealogy() {
             <div className="w-px h-3 bg-saffron/15" />
             <div className="flex items-center gap-1">
               <div className="w-4 h-0 border-t-2 border-saffron/40" />
-              <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">Mother → Child</span>
+              <span style={{ fontSize: '0.65rem' }} className="text-muted-foreground">
+                {lineageBase === "father" ? "Father → Child" : "Mother → Child"}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <span style={{ fontSize: '0.8rem' }}>🐄</span>
@@ -796,4 +835,181 @@ function genealogyCowToCow(g: GenealogyCattle): Cow {
     lifetimeMilkLiters: null,
     memorialNote: null,
   };
+}
+
+/* ─── Father Lineage Force Graph (graph-label-overlap style, color-coded by father) ─── */
+
+const FATHER_PALETTE = [
+  "#1B3A6B", "#d62828", "#2a9d8f", "#e76f51", "#6d597a",
+  "#00b4d8", "#f4a261", "#7b2cbf", "#007f5f", "#bc6c25",
+];
+
+function FatherColorGraph({
+  roots,
+  getChildren,
+  onSelect,
+}: {
+  roots: GenealogyCattle[];
+  getChildren: (tag: string) => GenealogyCattle[];
+  onSelect: (c: GenealogyCattle) => void;
+}) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInstanceRef = useRef<echarts.ECharts | null>(null);
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const rootsRef = useRef(roots);
+  rootsRef.current = roots;
+  const getChildrenRef = useRef(getChildren);
+  getChildrenRef.current = getChildren;
+
+  const renderChart = useCallback(() => {
+    const chart = chartInstanceRef.current;
+    if (!chart) return;
+
+    const rootsArr = rootsRef.current;
+    const nodeMap = new Map<string, any>();
+    const linkList: any[] = [];
+    const colorByTag = new Map<string, string>();
+    rootsArr.forEach((r, i) => colorByTag.set(r.tag_number, FATHER_PALETTE[i % FATHER_PALETTE.length]));
+
+    const visited = new Set<string>();
+    const queue: GenealogyCattle[] = [...rootsArr];
+    while (queue.length) {
+      const cow = queue.shift()!;
+      if (visited.has(cow.tag_number)) continue;
+      visited.add(cow.tag_number);
+      const color = colorByTag.get(cow.tag_number) || FATHER_PALETTE[0];
+      const isBull = (cow.animal_type || "").toUpperCase() === "BULL";
+      const status = deriveStatus(cow);
+      nodeMap.set(cow.tag_number, {
+        id: cow.tag_number,
+        name: cow.name,
+        cow,
+        symbolSize: isBull ? 60 : 40,
+        itemStyle: {
+          color,
+          borderColor: "#ffffff",
+          borderWidth: 2,
+          opacity: isBull ? 1 : 0.8,
+        },
+      });
+      const children = getChildrenRef.current(cow.tag_number);
+      for (const child of children) {
+        if (!colorByTag.has(child.tag_number)) colorByTag.set(child.tag_number, color);
+        linkList.push({
+          source: cow.tag_number,
+          target: child.tag_number,
+          lineStyle: { color, width: 1.6, opacity: 0.55, curveness: 0.08 },
+        });
+        queue.push(child);
+      }
+    }
+
+    const nodes = [...nodeMap.values()];
+    const categories = rootsArr.map((r, i) => ({
+      name: `${r.name} (${r.tag_number})`,
+      itemStyle: { color: FATHER_PALETTE[i % FATHER_PALETTE.length] },
+    }));
+
+    chart.setOption(
+      {
+        backgroundColor: "transparent",
+        tooltip: {
+          trigger: "item",
+          formatter: (params: any) => {
+            const c = params.data?.cow as GenealogyCattle | undefined;
+            if (!c) return "";
+            return `<b>${c.name}</b><br/>${c.tag_number}<br/>${c.animal_type || ""} &bull; ${deriveStatus(c)}<br/><span style="color:${params.color}">●</span> Father: ${c.father_name || "—"}`;
+          },
+        },
+        legend: {
+          data: categories.map(c => c.name),
+          type: "scroll",
+          orient: "horizontal",
+          bottom: 0,
+          left: "center",
+          textStyle: { fontSize: 10, color: "#6b7280" },
+          icon: "circle",
+        },
+        series: [
+          {
+            type: "graph",
+            layout: "force",
+            data: nodes,
+            links: linkList,
+            categories,
+            roam: true,
+            draggable: true,
+            label: {
+              show: true,
+              position: "right",
+              fontSize: 10,
+              color: "#374151",
+              fontWeight: 500,
+              formatter: (p: any) => p.name,
+            },
+            labelLayout: { hideOverlap: true },
+            force: {
+              repulsion: 220,
+              edgeLength: [80, 170],
+              gravity: 0.06,
+            },
+            emphasis: {
+              focus: "adjacency",
+              lineStyle: { width: 3 },
+            },
+            lineStyle: { curveness: 0.08 },
+          },
+        ],
+      },
+      true
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const chart = echarts.init(chartRef.current);
+    chartInstanceRef.current = chart;
+    renderChart();
+
+    chart.on("click", (params: any) => {
+      if (params.data?.cow) onSelectRef.current(params.data.cow as GenealogyCattle);
+    });
+
+    const resize = () => chart.resize();
+    window.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      chart.dispose();
+      chartInstanceRef.current = null;
+    };
+  }, [renderChart]);
+
+  useEffect(() => {
+    renderChart();
+  }, [renderChart, roots]);
+
+  useEffect(() => {
+    const id = setTimeout(() => chartInstanceRef.current?.resize(), 60);
+    return () => clearTimeout(id);
+  }, [fullscreen]);
+
+  if (roots.length === 0) {
+    return <p className="text-muted-foreground text-sm py-10 text-center">No bulls match the current filters</p>;
+  }
+
+  return (
+    <div className={fullscreen ? "fixed inset-0 z-50 bg-white p-4" : "relative"}>
+      <button
+        onClick={() => setFullscreen(f => !f)}
+        className="absolute top-2 right-2 z-10 w-9 h-9 rounded-xl bg-white/95 border border-saffron/25 flex items-center justify-center text-muted-foreground hover:text-saffron hover:border-saffron/50 shadow-md transition-colors"
+        title={fullscreen ? "Exit full screen" : "Full screen"}
+      >
+        {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+      </button>
+      <div ref={chartRef} style={{ height: fullscreen ? "100%" : "65vh", width: "100%" }} />
+    </div>
+  );
 }
