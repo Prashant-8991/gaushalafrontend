@@ -7,6 +7,7 @@ import { Timeline } from "./components/Timeline";
 import { Alerts } from "./components/Alerts";
 import { Donations } from "./components/Donations";
 import { CattleProfile } from "./components/CattleProfile";
+import { CattleDrillDown } from "./components/CattleDrillDown";
 import { AdminHerd } from "./components/AdminHerd";
 import { AdminUsers } from "./components/AdminUsers";
 import { RegisterCattle } from "./components/RegisterCattle";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: "alerts", Component: Alerts },
           { path: "donations", Component: Donations },
           { path: "cattle/:tagNumber", Component: CattleProfile },
+          { path: "cattle-drill-down", Component: CattleDrillDown },
           {
             Component: RequireAdminOrManager,
             children: [
