@@ -192,12 +192,43 @@ export function CattleProfile() {
           {/* FAMILY */}
           <Section icon={<GitBranch className="w-4 h-4" />} title="Family">
             <div className="space-y-4">
-              {(isParentObj(ov?.father) || isParentObj(ov?.mother)) && (
-                <div className="flex justify-center gap-16">
-                  <div className="text-center"><div className="w-16 h-16 rounded-full bg-saffron/20 border-2 border-saffron/40 flex items-center justify-center mx-auto"><span className="text-xl font-bold text-saffron">{isParentObj(ov?.mother) ? (ov!.mother as ParentInfo).name?.[0] || "?" : "?"}</span></div><p className="text-xs mt-1 font-medium">{isParentObj(ov?.mother) ? (ov!.mother as ParentInfo).name || "—" : "—"}</p><p className="text-[0.6rem] text-muted-foreground">Mother</p></div>
-                  <div className="text-center"><div className="w-16 h-16 rounded-full bg-navy/10 border-2 border-navy/30 flex items-center justify-center mx-auto"><span className="text-xl font-bold text-navy">{isParentObj(ov?.father) ? (ov!.father as ParentInfo).name?.[0] || "?" : "?"}</span></div><p className="text-xs mt-1 font-medium">{isParentObj(ov?.father) ? (ov!.father as ParentInfo).name || "—" : "—"}</p><p className="text-[0.6rem] text-muted-foreground">Father</p></div>
-                </div>
-              )}
+              {(() => {
+                const motherTag = isParentObj(ov?.mother) ? (ov!.mother as ParentInfo).tag_number : (ov as any)?.mother_tag_number || null;
+                const motherName = isParentObj(ov?.mother) ? (ov!.mother as ParentInfo).name : (typeof ov?.mother === 'string' && ov.mother !== 'Not available' ? ov.mother as string : null);
+                const fatherTag = isParentObj(ov?.father) ? (ov!.father as ParentInfo).tag_number : (ov as any)?.father_tag_number || null;
+                const fatherName = isParentObj(ov?.father) ? (ov!.father as ParentInfo).name : (typeof ov?.father === 'string' && ov.father !== 'Not available' ? ov.father as string : null);
+                const hasMother = !!motherTag || !!motherName;
+                const hasFather = !!fatherTag || !!fatherName;
+                const isBijadan = fatherTag === "બીજદાન";
+                if (!hasMother && !hasFather) return null;
+                return (
+                  <div className="flex justify-center gap-16">
+                    <button
+                      onClick={() => motherTag && navigate(`/cattle/${encodeURIComponent(motherTag)}`)}
+                      disabled={!motherTag}
+                      className={`text-center group ${motherTag ? 'cursor-pointer' : 'cursor-default'}`}
+                      title={motherTag ? `View ${motherName || motherTag} profile` : 'Mother not recorded'}
+                    >
+                      <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center mx-auto transition-all ${motherTag ? 'bg-saffron/20 border-saffron/40 group-hover:bg-saffron/30 group-hover:scale-105 group-hover:shadow-md' : 'bg-saffron/10 border-saffron/20 opacity-60'}`}><span className="text-xl font-bold text-saffron">{(motherName || motherTag || "?").charAt(0).toUpperCase()}</span></div>
+                      <p className={`text-xs mt-1 font-medium ${motherTag ? 'group-hover:text-saffron group-hover:underline' : ''}`}>{motherName || motherTag || "—"}</p>
+                      {motherTag && <p className="text-[0.55rem] text-muted-foreground font-mono">#{motherTag}</p>}
+                      <p className="text-[0.6rem] text-muted-foreground">Mother</p>
+                    </button>
+                    <button
+                      onClick={() => fatherTag && !isBijadan && navigate(`/cattle/${encodeURIComponent(fatherTag)}`)}
+                      disabled={!fatherTag || isBijadan}
+                      className={`text-center group ${fatherTag && !isBijadan ? 'cursor-pointer' : fatherTag && isBijadan ? 'cursor-default' : 'cursor-default'}`}
+                      title={isBijadan ? `Sperm donation: ${fatherName || "G-008"} (${fatherTag}) — not a registered cattle` : fatherTag ? `View ${fatherName || fatherTag} profile` : 'Father not recorded'}
+                    >
+                      <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center mx-auto transition-all ${fatherTag && !isBijadan ? 'bg-navy/10 border-navy/30 group-hover:bg-navy/20 group-hover:scale-105 group-hover:shadow-md' : fatherTag && isBijadan ? 'bg-amber-50 border-amber-300' : 'bg-slate-100 border-slate-200 opacity-60'}`}><span className={`text-xl font-bold ${fatherTag && !isBijadan ? 'text-navy' : fatherTag && isBijadan ? 'text-amber-600' : 'text-slate-400'}`}>{(fatherName || fatherTag || "?").charAt(0).toUpperCase()}</span></div>
+                      <p className={`text-xs mt-1 font-medium ${fatherTag && !isBijadan ? 'group-hover:text-navy group-hover:underline' : ''}`}>{fatherName || fatherTag || "—"}</p>
+                      {fatherTag ? <p className="text-[0.55rem] text-muted-foreground font-mono">#{fatherTag}</p> : <p className="text-[0.55rem] text-muted-foreground">—</p>}
+                      {isBijadan && <span className="mt-1 inline-flex px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[0.55rem] font-medium border border-amber-200">Sperm Donation</span>}
+                      <p className="text-[0.6rem] text-muted-foreground">Father</p>
+                    </button>
+                  </div>
+                );
+              })()}
               {ov?.childrens && ov.childrens.length > 0 && (
                 <div><p className="text-xs text-muted-foreground mb-1.5">Children ({ov.childrens.length})</p><div className="flex flex-wrap gap-2">{ov.childrens.map(c => (
                   <button key={c.tag_number} onClick={() => navigate(`/cattle/${c.tag_number}`)} className="flex items-center gap-1.5 bg-muted/30 rounded-lg px-2.5 py-1.5 border border-saffron/10 hover:border-saffron/30 text-xs"><div className="w-5 h-5 rounded-full bg-saffron/20 flex items-center justify-center"><span className="text-[0.5rem] text-saffron font-bold">{c.name?.[0] || "?"}</span></div>{c.name}</button>))}</div></div>

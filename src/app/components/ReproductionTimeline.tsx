@@ -52,6 +52,7 @@ function weekSpan(start: Date | null, end: Date | null): number {
 }
 
 function EventTrack({ evt }: { evt: Event }) {
+  const navigate = useNavigate();
   const conc = toDate(evt.conception_date);
   const birth = toDate(evt.birth_date);
   const start = conc ?? birth ?? new Date();
@@ -61,11 +62,16 @@ function EventTrack({ evt }: { evt: Event }) {
   const widthPct = Math.min(100, (totalWeeks / MAX_WEEK) * 100);
   const gestationWeeks = evt.gestation_days != null ? Math.round(evt.gestation_days / 7) : null;
 
+  const handleBullClick = () => {
+    if (evt.bull?.tag_number && evt.bull.tag_number !== "બીજદાન") navigate(`/cattle/${encodeURIComponent(evt.bull.tag_number)}`);
+  };
+  const handleChildClick = () => {
+    if (evt.child?.tag_number) navigate(`/cattle/${encodeURIComponent(evt.child.tag_number)}`);
+  };
+
   return (
     <div className="relative py-10 pl-2 pr-4">
-      {/* Track line */}
       <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 bg-slate-100 rounded-full" />
-      {/* Pregnancy / gestation fill */}
       {conc && birth && (
         <div
           className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-gradient-to-r from-pink-400 via-rose-400 to-emerald-500"
@@ -73,26 +79,34 @@ function EventTrack({ evt }: { evt: Event }) {
         />
       )}
 
-      {/* CONCEPTION node (left) */}
       {conc && (
         <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
           <div className="relative z-10 flex flex-col items-center">
             <span className="text-[0.55rem] text-pink-600 font-semibold bg-pink-50 px-1.5 py-0.5 rounded-full border border-pink-200 whitespace-nowrap">Conception</span>
             <div className="mt-1 w-5 h-5 rounded-full bg-pink-500 border-4 border-white shadow-md shadow-pink-200" />
-            {evt.bull && (
-              <div className="mt-2 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-navy to-navy-dark text-white flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-navy/20">
-                  <span className="text-base font-bold">{(evt.bull.name || evt.bull.tag_number || "?").charAt(0).toUpperCase()}</span>
-                </div>
-                <span className="mt-1 text-[0.6rem] font-semibold text-navy text-center leading-tight">{evt.bull.name || "Bull"}</span>
-              </div>
-            )}
+            {evt.bull && (() => {
+                const isBijadan = evt.bull.tag_number === "બીજદાન";
+                return (
+                  <button
+                    onClick={handleBullClick}
+                    disabled={!evt.bull.tag_number || isBijadan}
+                    title={isBijadan ? `Sperm donation: ${evt.bull.name || "G-008"} (${evt.bull.tag_number})` : evt.bull.tag_number ? `View ${evt.bull.name || evt.bull.tag_number} profile` : undefined}
+                    className={`mt-2 flex flex-col items-center group/bull ${evt.bull.tag_number && !isBijadan ? "cursor-pointer hover:opacity-90" : "cursor-default"}`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2 border-white ring-2 transition-transform ${isBijadan ? "bg-amber-50 border-amber-300 ring-amber-200" : "bg-gradient-to-br from-navy to-navy-dark text-white ring-navy/20"} ${evt.bull.tag_number && !isBijadan ? "group-hover/bull:scale-110 group-hover/bull:shadow-xl" : ""}`}>
+                      <span className={`text-base font-bold ${isBijadan ? "text-amber-600" : "text-white"}`}>{(evt.bull.name || evt.bull.tag_number || "?").charAt(0).toUpperCase()}</span>
+                    </div>
+                    <span className={`mt-1 text-[0.6rem] font-semibold text-center leading-tight ${isBijadan ? "text-amber-700" : "text-navy"} ${evt.bull.tag_number && !isBijadan ? "group-hover/bull:underline decoration-navy/30" : ""}`}>{evt.bull.name || "Bull"}</span>
+                    {evt.bull.tag_number && <span className="text-[0.55rem] text-muted-foreground font-mono">#{evt.bull.tag_number}</span>}
+                    {isBijadan && <span className="mt-0.5 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[0.5rem] font-medium border border-amber-200">Sperm Donation</span>}
+                  </button>
+                );
+              })()}
             <span className="mt-1 text-[0.6rem] text-muted-foreground">{fmt(evt.conception_date)}</span>
           </div>
         </div>
       )}
 
-      {/* Gestation label */}
       {gestationWeeks != null && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+22px)] flex items-center gap-1 px-2 py-0.5 bg-rose-50 rounded-full border border-rose-200">
           <Heart className="w-3 h-3 text-rose-500" />
@@ -100,27 +114,29 @@ function EventTrack({ evt }: { evt: Event }) {
         </div>
       )}
 
-      {/* BIRTH node (right) */}
       {birth && (
         <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
           <div className="relative z-10 flex flex-col items-center">
             <span className="text-[0.55rem] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200 whitespace-nowrap">Birth</span>
             <div className="mt-1 w-5 h-5 rounded-full bg-emerald-500 border-4 border-white shadow-md shadow-emerald-200" />
             {evt.child && (
-              <div className="mt-2 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-emerald-200">
+              <button
+                onClick={handleChildClick}
+                className="mt-2 flex flex-col items-center group/child cursor-pointer hover:opacity-90"
+                title={`View ${evt.child.name || evt.child.tag_number} profile`}
+              >
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-emerald-200 transition-transform group-hover/child:scale-110 group-hover/child:shadow-xl">
                   <Baby className="w-5 h-5" />
                 </div>
-                <span className="mt-1 text-[0.6rem] font-semibold text-emerald-800 text-center leading-tight">{evt.child.name || evt.child.tag_number}</span>
-                <span className="text-[0.55rem] text-muted-foreground">#{evt.child.tag_number}</span>
-              </div>
+                <span className="mt-1 text-[0.6rem] font-semibold text-emerald-800 text-center leading-tight group-hover/child:underline decoration-emerald-300">{evt.child.name || evt.child.tag_number}</span>
+                <span className="text-[0.55rem] text-muted-foreground font-mono">#{evt.child.tag_number}</span>
+              </button>
             )}
             <span className="mt-1 text-[0.6rem] text-muted-foreground">{fmt(evt.birth_date)}</span>
           </div>
         </div>
       )}
 
-      {/* Ongoing pregnancy */}
       {evt.is_ongoing && conc && !birth && (
         <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
           <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200">
@@ -242,10 +258,18 @@ export function ReproductionTimeline({ data }: { data: ReproductionTimelineData 
           <span className="text-xs font-medium text-navy">Born: {fmt(data.cattle_dob)}</span>
         </div>
         {data.bull && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-saffron/5 border border-saffron/10">
-            <GitBranch className="w-3.5 h-3.5 text-saffron" />
-            <span className="text-xs font-medium text-saffron">Line: {data.bull.name || data.bull.tag_number}</span>
-          </div>
+          <button
+            onClick={() => data.bull?.tag_number && data.bull.tag_number !== "બીજદાન" && navigate(`/cattle/${encodeURIComponent(data.bull.tag_number)}`)}
+            disabled={!data.bull.tag_number || data.bull.tag_number === "બીજદાન"}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${data.bull.tag_number === "બીજદાન" ? "bg-amber-50 border-amber-200 cursor-default" : data.bull.tag_number ? "bg-saffron/5 border-saffron/10 hover:bg-saffron/10 cursor-pointer" : "bg-saffron/5 border-saffron/10 cursor-default"}`}
+            title={data.bull.tag_number === "બીજદાન" ? `Sperm donation: ${data.bull.name || "G-008"} (${data.bull.tag_number})` : data.bull.tag_number ? `View ${data.bull.name || data.bull.tag_number} profile` : undefined}
+          >
+            <GitBranch className={`w-3.5 h-3.5 ${data.bull.tag_number === "બીજદાન" ? "text-amber-600" : "text-saffron"}`} />
+            <span className={`text-xs font-medium ${data.bull.tag_number === "બીજદાન" ? "text-amber-700" : "text-saffron"}`}>
+              Line: {data.bull.name && data.bull.tag_number ? `${data.bull.name} (#${data.bull.tag_number})` : (data.bull.name || (data.bull.tag_number ? `#${data.bull.tag_number}` : "—"))}
+            </span>
+            {data.bull.tag_number === "બીજદાન" && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[0.55rem] border border-amber-200">Sperm Donation</span>}
+          </button>
         )}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100">
           <Baby className="w-3.5 h-3.5 text-emerald-600" />

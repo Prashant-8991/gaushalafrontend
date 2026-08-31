@@ -132,6 +132,53 @@ export function CattleDrillDown() {
     }).catch(()=> setOptions(ALLOWED_TAGS.map(t=>({tag_number:t, name:null}))))
   },[])
 
+  // ── Bull filter state ──
+  const [bullOptions, setBullOptions] = useState<{tag_number:string; name:string|null; animal_type?:string|null}[]>([])
+  const [bullSearch, setBullSearch] = useState("")
+  const [bullOpen, setBullOpen] = useState(false)
+  const [selectedBull, setSelectedBull] = useState<string>("SOM-157")
+  const [bullMode, setBullMode] = useState<"bull"|"not_bull"|null>(null)
+  const [bullData, setBullData] = useState<{bull_tag_number:string; bull_name:string|null; count:number; children: DetailRecord[]}|null>(null)
+  const [bullLoading, setBullLoading] = useState(false)
+  const [bullExpanded, setBullExpanded] = useState<string|null>(null)
+
+  useEffect(()=>{
+    fetch(`${API_BASE}/cattle/bull-tags`).then(r=>r.json()).then((rows:any[])=>{
+      if(rows && rows.length) setBullOptions(rows)
+    }).catch(()=> setBullOptions([
+      {tag_number:"SOM-157", name:"", animal_type:"BULL"},
+      {tag_number:"SOM-333", name:"", animal_type:"BULL"},
+      {tag_number:"SOM-337", name:"", animal_type:"BULL"},
+      {tag_number:"SOM-338", name:"", animal_type:"BULL"},
+    ]))
+  },[])
+
+  const filteredBulls = bullOptions.filter(o=> {
+    const q=bullSearch.trim().toLowerCase()
+    if(!q) return true
+    return o.tag_number.toLowerCase().includes(q) || (o.name||"").toLowerCase().includes(q)
+  })
+  const selectedBullLabel = (()=>{
+    const o=bullOptions.find(x=>x.tag_number===selectedBull)
+    return o ? `${o.tag_number}${o.name ? " — " + o.name : ""}` : selectedBull
+  })()
+  const selectedBullName = bullOptions.find(x=>x.tag_number===selectedBull)?.name || ""
+
+  const handleBullMode = async (mode: "bull"|"not_bull") => {
+    setBullMode(mode)
+    if(mode==="not_bull"){
+      setBullData({bull_tag_number:selectedBull, bull_name:selectedBullName, count:0, children:[]})
+      return
+    }
+    setBullLoading(true)
+    try{
+      const r=await fetch(`${API_BASE}/cattle/bull/${encodeURIComponent(selectedBull)}/children?mode=bull`)
+      const d=await r.json()
+      setBullData(d)
+    }catch{ setBullData(null) }
+    setBullLoading(false)
+  }
+
   const filtered = options.filter(o=> {
     const q=search.trim().toLowerCase()
     if(!q) return true
@@ -216,6 +263,88 @@ export function CattleDrillDown() {
           )}
         </div>
         <span className="text-xs text-muted-foreground">Search by name or tag • {options.length} available</span>
+      </div>
+
+      {/* ── Bull Filter ── */}
+      <div className="bg-white rounded-2xl border border-saffron/10 p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-navy to-navy-dark flex items-center justify-center text-white shadow-sm"><GitBranch className="w-4 h-4"/></div>
+          <div>
+            <h3 className="text-sm font-bold">Bull Filter</h3>
+            <p className="text-xs text-muted-foreground">Select a bull — tag shown, name below</p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground shrink-0">Select Bull</label>
+          <div className="relative w-full sm:w-80">
+            <div className="relative">
+              <input
+                value={bullOpen ? bullSearch : selectedBullLabel}
+                onChange={e=>{ setBullSearch(e.target.value); setBullOpen(true)}}
+                onFocus={()=>{ setBullSearch(""); setBullOpen(true)}}
+                onBlur={()=> setTimeout(()=> setBullOpen(false), 180)}
+                placeholder="Search bull by tag or name..."
+                className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-saffron/20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-saffron/20"
+              />
+              <Search className="w-4 h-4 text-muted-foreground/60 absolute left-3 top-1/2 -translate-y-1/2" />
+              <button type="button" onClick={()=> setBullOpen(o=>!o)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-muted"><ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${bullOpen?'rotate-180':''}`} /></button>
+            </div>
+            {bullOpen && (
+              <div className="absolute z-20 mt-2 w-full max-h-72 overflow-auto rounded-xl border border-saffron/10 bg-white shadow-xl">
+                {filteredBulls.length===0 ? <div className="px-4 py-6 text-center text-sm text-muted-foreground">No bulls found</div> :
+                  filteredBulls.map(o=> (
+                    <button
+                      key={o.tag_number}
+                      onMouseDown={e=>{ e.preventDefault(); setSelectedBull(o.tag_number); setBullSearch(""); setBullOpen(false); setBullMode(null); setBullData(null)}}
+                      className={`w-full text-left px-4 py-3 flex flex-col hover:bg-saffron/5 border-b border-saffron/5 last:border-0 ${selectedBull===o.tag_number?'bg-saffron/10':''}`}
+                    >
+                      <span className="text-sm font-mono font-bold text-navy">{o.tag_number}</span>
+                      <span className="text-xs text-muted-foreground">{o.name || "—"}</span>
+                    </button>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="font-mono font-medium text-navy">{selectedBull}</span>
+            {selectedBullName && <span className="text-muted-foreground">— {selectedBullName}</span>}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={()=> handleBullMode("bull")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${bullMode==="bull" ? "bg-navy text-white border-navy shadow-md" : "bg-white text-navy border-navy/20 hover:bg-navy/5"}`}
+          >
+            Bull {selectedBull}
+          </button>
+          <button
+            onClick={()=> handleBullMode("not_bull")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${bullMode==="not_bull" ? "bg-amber-500 text-white border-amber-500 shadow-md" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"}`}
+          >
+            Not Bull {selectedBull}
+          </button>
+          {bullMode && <span className="inline-flex items-center px-3 py-2 rounded-xl bg-muted text-xs">{bullMode==="bull" ? `Showing only ${selectedBull}'s children` : `Hiding ${selectedBull}'s children`}</span>}
+        </div>
+        {bullMode==="bull" && (
+          <div>
+            {bullLoading ? <div className="h-24 bg-muted/20 rounded-xl animate-pulse border"/> :
+              bullData ? (
+                bullData.children.length===0 ? <div className="text-center py-6 rounded-xl border border-dashed bg-muted/10 text-sm text-muted-foreground">No children found for {selectedBull}</div> :
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold tracking-wider uppercase text-navy">{bullData.count} children of {selectedBull} — {bullData.bull_name}</p>
+                  <SingleTable records={bullData.children as DetailRecord[]} expandedTag={bullExpanded} setExpandedTag={setBullExpanded} />
+                </div>
+              ) : <div className="text-sm text-muted-foreground">Click "Bull {selectedBull}" to load children.</div>
+            }
+          </div>
+        )}
+        {bullMode==="not_bull" && (
+          <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/50 p-4 text-center">
+            <p className="text-sm font-medium text-amber-800">Not showing children of {selectedBull}</p>
+            <p className="text-xs text-amber-700/70">Bull's child list is hidden. Click "Bull {selectedBull}" to show again.</p>
+          </div>
+        )}
       </div>
 
       {loading ? <div className="space-y-4"><div className="h-64 bg-muted/20 rounded-2xl animate-pulse border"/><div className="h-64 bg-muted/20 rounded-2xl animate-pulse border"/></div>

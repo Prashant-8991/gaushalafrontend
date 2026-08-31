@@ -19,6 +19,7 @@ import {
   PlusCircle,
   Droplets,
   Table2,
+  StickyNote,
 } from "lucide-react";
 import { Toaster } from "./ui/sonner";
 import { CardThemeProvider, useCardTheme } from "./CardThemeContext";
@@ -30,6 +31,7 @@ const navItems = [
   // { to: "/timeline", icon: Clock, label: "Timeline" },
   { to: "/alerts", icon: Bell, label: "Alerts" },
   { to: "/donations", icon: HandHeart, label: "Donations" },
+  { to: "/notes", icon: StickyNote, label: "Notes" },
 ];
 
   const adminNavItems = [

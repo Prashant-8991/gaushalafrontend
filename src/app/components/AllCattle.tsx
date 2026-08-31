@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft, Search, Mic, MicOff, Loader2, AlertTriangle,
-  SlidersHorizontal, X, CalendarDays,
+  SlidersHorizontal, X, CalendarDays, ChevronDown, GitBranch,
 } from "lucide-react";
 import { SiHappycow } from "react-icons/si";
 import { CowCard } from "./CowCard";
@@ -95,6 +95,15 @@ export function AllCattle() {
   const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
   const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
 
+  /* Bull filter state */
+  const [bullOptions, setBullOptions] = useState<{ tag_number: string; name: string | null }[]>([]);
+  const [bullSearch, setBullSearch] = useState("");
+  const [bullOpen, setBullOpen] = useState(false);
+  const [selectedBull, setSelectedBull] = useState<string>("SOM-157");
+  const [bullMode, setBullMode] = useState<"bull" | "not_bull" | null>(null);
+  const [bullChildren, setBullChildren] = useState<Set<string>>(new Set());
+  const [bullLoading, setBullLoading] = useState(false);
+
   const recognitionRef = useRef<any>(null);
 
   /* ─── Fetch ─── */
@@ -108,6 +117,48 @@ export function AllCattle() {
       .then((data: CattleItem[]) => { setCattleList(data); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
   }, [config.api]);
+
+  /* ─── Bull options fetch ─── */
+  useEffect(() => {
+    fetch(`${API_BASE}/cattle/bull-tags`)
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: { tag_number: string; name: string | null }[]) => {
+        if (rows && rows.length) setBullOptions(rows);
+      })
+      .catch(() => {});
+  }, []);
+
+  const filteredBulls = bullOptions.filter(o => {
+    const q = bullSearch.trim().toLowerCase();
+    if (!q) return true;
+    return o.tag_number.toLowerCase().includes(q) || (o.name || "").toLowerCase().includes(q);
+  });
+
+  const handleBullMode = async (mode: "bull" | "not_bull") => {
+    setBullMode(mode);
+    if (mode === "not_bull") {
+      // still need children set to know what to hide
+      if (bullChildren.size === 0) {
+        setBullLoading(true);
+        try {
+          const r = await fetch(`${API_BASE}/cattle/bull/${encodeURIComponent(selectedBull)}/children?mode=bull`);
+          const d = await r.json();
+          setBullChildren(new Set((d.children || []).map((c: any) => c.tag_number)));
+        } catch {}
+        setBullLoading(false);
+      }
+      return;
+    }
+    setBullLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/cattle/bull/${encodeURIComponent(selectedBull)}/children?mode=bull`);
+      const d = await r.json();
+      setBullChildren(new Set((d.children || []).map((c: any) => c.tag_number)));
+    } catch {
+      setBullChildren(new Set());
+    }
+    setBullLoading(false);
+  };
 
   /* ─── Derived unique options ─── */
 
@@ -138,11 +189,12 @@ export function AllCattle() {
       const onlyFemale = c.gender === "Female";
       const excludeMaleForMilking = milkingFilter !== null ? onlyFemale : true;
       const excludeMaleForPregnant = pregnantFilter !== null ? onlyFemale : true;
-      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant && excludeMaleForMilking && excludeMaleForPregnant;
+      const matchBull = bullMode === null ? true : bullMode === "bull" ? bullChildren.has(c.tag_number) : !bullChildren.has(c.tag_number);
+      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant && excludeMaleForMilking && excludeMaleForPregnant && matchBull;
     });
-  }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter]);
+  }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter, bullMode, bullChildren]);
 
-  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0);
+  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0);
 
   /* ─── Speech ─── */
 
@@ -213,7 +265,7 @@ export function AllCattle() {
   const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
-  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); };
+  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); };
 
   /* ─── Render: loading / error ─── */
 
@@ -308,8 +360,8 @@ export function AllCattle() {
       <AnimatePresence>
         {showFilters && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="bg-white dark:bg-navy border border-saffron/20 rounded-2xl p-5 space-y-5 shadow-lg">
+            exit={{ opacity: 0, height: 0 }} className="overflow-visible">
+            <div className="bg-white dark:bg-navy border border-saffron/20 rounded-2xl p-5 space-y-5 shadow-lg overflow-visible">
 
               {/* Header row */}
               <div className="flex items-center justify-between">
@@ -414,6 +466,78 @@ export function AllCattle() {
                 </div>
               </div>
 
+              {/* Bull Filter — Select Bull (tag + name below) */}
+              <div>
+                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <GitBranch className="w-3 h-3 text-navy" /> Bull Filter
+                </p>
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
+                    <input
+                      value={bullOpen ? bullSearch : (bullOptions.find(b => b.tag_number === selectedBull)?.name ? `${selectedBull} — ${bullOptions.find(b => b.tag_number === selectedBull)?.name}` : selectedBull)}
+                      onChange={e => { setBullSearch(e.target.value); setBullOpen(true); }}
+                      onFocus={() => { setBullSearch(""); setBullOpen(true); }}
+                      onBlur={() => setTimeout(() => setBullOpen(false), 180)}
+                      placeholder="Search bull by tag or name..."
+                      className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-saffron/20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-navy/20"
+                    />
+                    <button type="button" onClick={() => setBullOpen(o => !o)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-muted">
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${bullOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+                  {bullOpen && (
+                    <div className="absolute z-50 mt-2 w-full max-h-72 overflow-auto rounded-xl border-2 border-navy/20 bg-white shadow-2xl">
+                      {filteredBulls.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-sm text-muted-foreground">No bulls found</div>
+                      ) : (
+                        filteredBulls.map(o => (
+                          <button
+                            key={o.tag_number}
+                            onMouseDown={e => { e.preventDefault(); setSelectedBull(o.tag_number); setBullSearch(""); setBullOpen(false); }}
+                            className={`w-full text-left px-4 py-3.5 flex items-center justify-between hover:bg-navy hover:text-white border-b border-saffron/10 last:border-0 group ${selectedBull === o.tag_number ? 'bg-navy text-white' : 'bg-white text-foreground'}`}
+                          >
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-mono font-bold ${selectedBull === o.tag_number ? 'text-white' : 'text-navy group-hover:text-white'}`}>{o.tag_number}</span>
+                              <span className={`text-xs ${selectedBull === o.tag_number ? 'text-white/80' : 'text-muted-foreground group-hover:text-white/80'}`}>{o.name || "—"}</span>
+                            </div>
+                            {selectedBull === o.tag_number && <span className="text-xs font-bold bg-white text-navy px-2 py-1 rounded-full">✓ Selected</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                  <span className="font-mono font-medium text-navy">{selectedBull}</span>
+                  {bullOptions.find(b => b.tag_number === selectedBull)?.name && (
+                    <span className="text-muted-foreground">— {bullOptions.find(b => b.tag_number === selectedBull)?.name}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button
+                    onClick={() => handleBullMode("bull")}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 ${bullMode === "bull" ? "bg-navy text-white border-navy shadow-md" : "bg-white text-navy border-navy/20 hover:bg-navy/5"}`}
+                  >
+                    {bullLoading && bullMode === "bull" ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitBranch className="w-3 h-3" />}
+                    Bull {selectedBull}
+                  </button>
+                  <button
+                    onClick={() => handleBullMode("not_bull")}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${bullMode === "not_bull" ? "bg-amber-500 text-white border-amber-500 shadow-md" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"}`}
+                  >
+                    Not Bull {selectedBull}
+                  </button>
+                </div>
+                {bullMode && (
+                  <p className="text-[0.65rem] text-muted-foreground mt-2">
+                    {bullMode === "bull"
+                      ? `Showing only children of ${selectedBull} (${bullChildren.size} found)`
+                      : `Hiding children of ${selectedBull} — showing all others`}
+                  </p>
+                )}
+              </div>
+
             </div>
           </motion.div>
         )}
@@ -448,6 +572,11 @@ export function AllCattle() {
           {pregnantFilter !== null && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
               {pregnantFilter ? "Pregnant" : "Not Pregnant"} <button onClick={() => setPregnantFilter(null)}><X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {bullMode !== null && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-navy text-white border border-navy">
+              <GitBranch className="w-3 h-3" /> {bullMode === "bull" ? `Bull ${selectedBull}` : `Not Bull ${selectedBull}`} <button onClick={() => { setBullMode(null); setBullChildren(new Set()); }}><X className="w-3 h-3" /></button>
             </span>
           )}
         </div>
