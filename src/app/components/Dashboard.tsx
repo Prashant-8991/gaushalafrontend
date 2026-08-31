@@ -51,24 +51,25 @@ export function Dashboard() {
 
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+  const [isPresentFilter, setIsPresentFilter] = useState<number | null>(1);
+
   const getDashboardData = async (): Promise<DashboardApiResponse> => {
-    const response = await fetch(`${API_BASE}/dashboard`);
+    const url = isPresentFilter === null ? `${API_BASE}/dashboard` : `${API_BASE}/dashboard?is_present=${isPresentFilter}`;
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error(`An error occurred: ${response.statusText}`);
     }
 
-    // Type casting the JSON response ensures TS knows what this data looks like
     return response.json() as Promise<DashboardApiResponse>;
   }
 
-  // 3. Changed the queryKey to match the data being fetched
   const {
     data,
     isLoading,
     error
   } = useQuery({
-    queryKey: ['dashboard'],
+    queryKey: ['dashboard', isPresentFilter],
     queryFn: getDashboardData
   });
 
@@ -223,6 +224,17 @@ export function Dashboard() {
 
           </div>
         </div>
+      </div>
+
+      {/* Global Present Filter */}
+      <div className="flex flex-wrap items-center gap-2 bg-white rounded-xl border border-saffron/10 p-3 shadow-sm">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-saffron" /> Herd Filter:
+        </span>
+        <button onClick={() => setIsPresentFilter(1)} className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${isPresentFilter === 1 ? "bg-green-500 text-white border-green-500 shadow" : "bg-white text-muted-foreground border-saffron/20 hover:border-green-300"}`}>Present</button>
+        <button onClick={() => setIsPresentFilter(0)} className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${isPresentFilter === 0 ? "bg-red-500 text-white border-red-500 shadow" : "bg-white text-muted-foreground border-saffron/20 hover:border-red-300"}`}>Not Present</button>
+        {isPresentFilter !== null && <button onClick={() => setIsPresentFilter(null)} className="ml-auto text-xs text-saffron hover:text-saffron-dark font-medium">Clear → All</button>}
+        <span className="text-[0.65rem] text-muted-foreground ml-2 hidden sm:inline">{isPresentFilter === 1 ? "Showing present cattle" : isPresentFilter === 0 ? "Showing not present cattle" : "Showing all cattle"}</span>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

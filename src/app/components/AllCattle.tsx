@@ -94,6 +94,7 @@ export function AllCattle() {
   const [animalFilter, setAnimalFilter] = useState<string[]>([]);
   const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
   const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
+  const [presentFilter, setPresentFilter] = useState<number | null>(1);
 
   /* Bull filter state */
   const [bullOptions, setBullOptions] = useState<{ tag_number: string; name: string | null }[]>([]);
@@ -112,11 +113,17 @@ export function AllCattle() {
     setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]);
     setMilkingFilter(null); setPregnantFilter(null);
     setSearch(""); setSelectedCow(null);
-    fetch(config.api)
+  }, [config.api, presentFilter]);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    const url = presentFilter === null ? config.api : `${config.api}?is_present=${presentFilter}`;
+    fetch(url)
       .then(r => { if (!r.ok) throw new Error(`API error ${r.status}`); return r.json(); })
       .then((data: CattleItem[]) => { setCattleList(data); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
-  }, [config.api]);
+  }, [config.api, presentFilter]);
 
   /* ─── Bull options fetch ─── */
   useEffect(() => {
@@ -194,7 +201,7 @@ export function AllCattle() {
     });
   }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter, bullMode, bullChildren]);
 
-  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0);
+  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0) + (presentFilter !== null && presentFilter !== 1 ? 1 : 0);
 
   /* ─── Speech ─── */
 
@@ -265,7 +272,7 @@ export function AllCattle() {
   const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
-  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); };
+  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); setPresentFilter(1); };
 
   /* ─── Render: loading / error ─── */
 
@@ -430,6 +437,29 @@ export function AllCattle() {
                 </div>
               </div>
 
+              {/* Present Status - Global */}
+              <div>
+                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
+                  Present Status
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => setPresentFilter(presentFilter === 1 ? null : 1)}
+                    className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${presentFilter === 1
+                      ? "bg-green-500 text-white border-green-500 shadow"
+                      : "bg-transparent text-muted-foreground border-saffron/20 hover:border-green-300"
+                      }`}>
+                    Present
+                  </button>
+                  <button onClick={() => setPresentFilter(presentFilter === 0 ? null : 0)}
+                    className={`px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${presentFilter === 0
+                      ? "bg-red-500 text-white border-red-500 shadow"
+                      : "bg-transparent text-muted-foreground border-saffron/20 hover:border-red-300"
+                      }`}>
+                    Not Present
+                  </button>
+                </div>
+              </div>
+
               {/* Milking Status */}
               <div>
                 <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
@@ -572,6 +602,11 @@ export function AllCattle() {
           {pregnantFilter !== null && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
               {pregnantFilter ? "Pregnant" : "Not Pregnant"} <button onClick={() => setPregnantFilter(null)}><X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {presentFilter !== null && presentFilter !== 1 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium border ${presentFilter === 0 ? "bg-red-100 text-red-700 border-red-200" : "bg-green-100 text-green-700 border-green-200"}`}>
+              {presentFilter === 0 ? "Not Present" : "Present"} <button onClick={() => setPresentFilter(1)}><X className="w-3 h-3" /></button>
             </span>
           )}
           {bullMode !== null && (
