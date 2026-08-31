@@ -13,6 +13,23 @@ const getPercent = (dateString: string, start = TIMELINE_START, end = TIMELINE_E
   return ((time - start) / (end - start)) * 100;
 };
 
+const formatCalvingInterval = (start: string, end: string) => {
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  const days = Math.round((e - s) / (1000 * 60 * 60 * 24));
+  if (days >= 365) {
+    const y = Math.floor(days / 365);
+    const m = Math.round((days % 365) / 30);
+    return m ? `${y}y ${m}mo` : `${y}y`;
+  }
+  if (days >= 60) {
+    const mo = Math.round(days / 30);
+    const d = days % 30;
+    return d ? `${mo}mo ${d}d` : `${mo}mo`;
+  }
+  return `${days}d`;
+};
+
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface LifecycleEvent {
@@ -75,6 +92,15 @@ function TimelineView({ events, lactations, milkData, weightData, tagName }: { e
     return e >= visibleStart && s <= visibleEnd;
   }), [lactations, visibleStart, visibleEnd]);
 
+  const calvingIntervals = useMemo(() => {
+    const calvings = [...filteredEvents].filter(e => e.type === 'Calving').sort((a,b)=> new Date(a.date).getTime() - new Date(b.date).getTime());
+    return calvings.slice(1).map((curr, idx) => {
+      const prev = calvings[idx];
+      return Math.round((new Date(curr.date).getTime() - new Date(prev.date).getTime()) / (1000*60*60*24));
+    });
+  }, [filteredEvents]);
+  const avgCalvingInterval = calvingIntervals.length ? Math.round(calvingIntervals.reduce((a,b)=>a+b,0)/calvingIntervals.length) : null;
+
   const getPercentVisible = (dateString: string) => getPercent(dateString, visibleStart, visibleEnd);
 
   return (
@@ -93,6 +119,7 @@ function TimelineView({ events, lactations, milkData, weightData, tagName }: { e
             <Stat icon={Milk} value={filteredLactations.length} label="Lactations" color="text-blue-500" bg="bg-blue-50" darkBorder="border-blue-200" />
             <Stat icon={Droplet} value={filteredMilk.length ? `${Math.max(...filteredMilk.map(m=>m.yield)).toFixed(1)} L` : "—"} label="Record Peak" color="text-saffron" bg="bg-orange-50" darkBorder="border-orange-200" />
             <Stat icon={Scale} value={filteredWeight.length ? `${Math.max(...filteredWeight.map(w=>w.weight)).toFixed(0)} kg` : "—"} label="Mature Wt." color="text-navy" bg="bg-amber-50" darkBorder="border-amber-200" />
+            <Stat icon={Baby} value={avgCalvingInterval ? `${avgCalvingInterval}d` : "—"} label="Avg Calving Interval" color="text-purple-600" bg="bg-purple-50" darkBorder="border-purple-200" />
           </div>
         </div>
 
@@ -198,6 +225,22 @@ function TimelineView({ events, lactations, milkData, weightData, tagName }: { e
                     </div>
                   );
                 })}
+                {(() => {
+                  const calvings = [...filteredEvents].filter(e => e.type === 'Calving').sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                  return calvings.slice(1).map((curr, idx) => {
+                    const prev = calvings[idx];
+                    const leftPct = getPercent(prev.date, visibleStart, visibleEnd);
+                    const widthPct = getPercent(curr.date, visibleStart, visibleEnd) - leftPct;
+                    if (widthPct <= 0) return null;
+                    return (
+                      <div key={`interval-${prev.id}-${curr.id}`} className="absolute top-[78%] left-0 border-t-2 border-dotted border-purple-400" style={{ left: `${leftPct}%`, width: `${widthPct}%` }}>
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-purple-600 text-white text-[8px] md:text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-md border border-white">
+                          {formatCalvingInterval(prev.date, curr.date)}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
                 {filteredEvents.map((event) => {
                   const IconComponent = (iconMap[event.type] || Activity);
                   let yOffset = '';
@@ -303,26 +346,28 @@ export function LifecycleShowcase({ tag }: { tag: string }) {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between p-4 bg-black border-b border-zinc-800">
-            <h2 className="text-white font-bold text-lg flex items-center gap-2"><Activity className="w-5 h-5 text-yellow-400" /> {tag} — Lifecycle Timeline</h2>
-            <button onClick={() => setOpen(false)} className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition-colors">
-              <X className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col h-screen">
+          <div className="flex items-center justify-between px-4 py-3 bg-black border-b border-zinc-800 shrink-0">
+            <h2 className="text-white font-bold text-base flex items-center gap-2"><Activity className="w-5 h-5 text-yellow-400" /> {tag} — Lifecycle Timeline</h2>
+            <button onClick={() => setOpen(false)} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition-colors">
+              <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-auto bg-white dark:bg-black p-2 md:p-4">
+          <div className="flex-1 overflow-hidden bg-white p-1 md:p-2 flex flex-col">
             {loading ? (
-              <div className="flex items-center justify-center h-64 text-zinc-500">Loading lifecycle...</div>
+              <div className="flex items-center justify-center flex-1 text-zinc-500">Loading lifecycle...</div>
             ) : data ? (
-              <TimelineView
-                events={data.reproductionEvents || []}
-                lactations={data.lactationPeriods || []}
-                milkData={data.milkData || []}
-                weightData={data.weightData || []}
-                tagName={data.name || tag}
-              />
+              <div className="flex-1 overflow-auto">
+                <TimelineView
+                  events={data.reproductionEvents || []}
+                  lactations={data.lactationPeriods || []}
+                  milkData={data.milkData || []}
+                  weightData={data.weightData || []}
+                  tagName={data.name || tag}
+                />
+              </div>
             ) : (
-              <div className="text-center py-20 text-zinc-500">No data</div>
+              <div className="flex items-center justify-center flex-1 text-zinc-500">No data</div>
             )}
           </div>
         </div>
