@@ -32,6 +32,10 @@ const navItems = [
   { to: "/alerts", icon: Bell, label: "Alerts" },
   { to: "/donations", icon: HandHeart, label: "Donations" },
   { to: "/notes", icon: StickyNote, label: "Notes" },
+  { to: "/admin/herd", icon: ClipboardList, label: "Herd Management" },
+  { to: "/admin/report", icon: Table2, label: "Report" },
+  { to: "/admin/register", icon: PlusCircle, label: "Register Cattle" },
+  { to: "/admin/daily", icon: Droplets, label: "Daily Operations" },
 ];
 
   const adminNavItems = [

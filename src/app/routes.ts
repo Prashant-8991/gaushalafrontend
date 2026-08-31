@@ -17,14 +17,14 @@ import { Report } from "./components/Report";
 import { DailyOps } from "./components/DailyOps";
 import { Login } from "./components/Login";
 import { PendingApproval } from "./components/PendingApproval";
-import { RequireAuth, RequireAdminOrManager, RequireAdmin } from "./components/RequireAuth";
+// import { RequireAuth, RequireAdminOrManager, RequireAdmin } from "./components/RequireAuth";
 
 export const router = createBrowserRouter([
-  { path: "login", Component: Login },
-  { path: "pending-approval", Component: PendingApproval },
+  // { path: "login", Component: Login },
+  // { path: "pending-approval", Component: PendingApproval },
   {
     path: "/",
-    Component: RequireAuth,
+    // Component: RequireAuth,
     children: [
       {
         Component: Layout,
@@ -38,22 +38,27 @@ export const router = createBrowserRouter([
           { path: "cattle/:tagNumber", Component: CattleProfile },
           { path: "cattle-drill-down", Component: CattleDrillDown },
           { path: "notes", Component: Notes },
-          {
-            Component: RequireAdminOrManager,
-            children: [
-              { path: "admin/herd", Component: AdminHerd },
-              { path: "admin/register", Component: RegisterCattle },
-              { path: "admin/edit/:tagNumber", Component: EditCattle },
-              { path: "admin/report", Component: Report },
-              { path: "admin/daily", Component: DailyOps },
-            ],
-          },
-          {
-            Component: RequireAdmin,
-            children: [
-              { path: "admin/users", Component: AdminUsers },
-            ],
-          },
+          { path: "admin/herd", Component: AdminHerd },
+          { path: "admin/register", Component: RegisterCattle },
+          { path: "admin/edit/:tagNumber", Component: EditCattle },
+          { path: "admin/report", Component: Report },
+          { path: "admin/daily", Component: DailyOps },
+          // {
+          //   Component: RequireAdminOrManager,
+          //   children: [
+          //     { path: "admin/herd", Component: AdminHerd },
+          //     { path: "admin/register", Component: RegisterCattle },
+          //     { path: "admin/edit/:tagNumber", Component: EditCattle },
+          //     { path: "admin/report", Component: Report },
+          //     { path: "admin/daily", Component: DailyOps },
+          //   ],
+          // },
+          // {
+          //   Component: RequireAdmin,
+          //   children: [
+          //     { path: "admin/users", Component: AdminUsers },
+          //   ],
+          // },
         ],
       },
     ],

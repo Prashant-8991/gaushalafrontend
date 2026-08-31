@@ -9,12 +9,20 @@ if (!GOOGLE_CLIENT_ID) {
   console.warn("VITE_GOOGLE_CLIENT_ID is not set. Google Sign-In will not work.");
 }
 
+// export default function App() {
+//   return (
+//     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+//       <AuthProvider>
+//         <RouterProvider router={router} />
+//       </AuthProvider>
+//     </GoogleOAuthProvider>
+//   );
+// }
+
+
+
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>
-    </GoogleOAuthProvider>
   );
 }
