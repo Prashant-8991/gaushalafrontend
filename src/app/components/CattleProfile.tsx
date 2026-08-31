@@ -8,6 +8,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { useAuth } from "../auth/AuthContext";
 import { ReproductionTimeline, ReproductionTimelineData } from "./ReproductionTimeline";
 import { WeightChart, WeightTimelineData } from "./WeightChart";
+import { LifecycleShowcase } from "./LifecycleTimeline";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
 interface ParentInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -188,6 +189,9 @@ export function CattleProfile() {
               </div>
             )}
           </Section>
+
+          {/* LIFECYCLE SHOWCASE - Golden Highlight */}
+          <LifecycleShowcase tag={tag} />
 
           {/* FAMILY */}
           <Section icon={<GitBranch className="w-4 h-4" />} title="Family">
