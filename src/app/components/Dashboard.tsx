@@ -51,7 +51,7 @@ export function Dashboard() {
 
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-  const [isPresentFilter, setIsPresentFilter] = useState<number | null>(1);
+  const [isPresentFilter, setIsPresentFilter] = useState<number | null>(null);
 
   const getDashboardData = async (): Promise<DashboardApiResponse> => {
     const url = isPresentFilter === null ? `${API_BASE}/dashboard` : `${API_BASE}/dashboard?is_present=${isPresentFilter}`;

@@ -94,7 +94,7 @@ export function AllCattle() {
   const [animalFilter, setAnimalFilter] = useState<string[]>([]);
   const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
   const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
-  const [presentFilter, setPresentFilter] = useState<number | null>(1);
+  const [presentFilter, setPresentFilter] = useState<number | null>(null);
 
   /* Bull filter state */
   const [bullOptions, setBullOptions] = useState<{ tag_number: string; name: string | null }[]>([]);
@@ -201,7 +201,7 @@ export function AllCattle() {
     });
   }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter, bullMode, bullChildren]);
 
-  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0) + (presentFilter !== null && presentFilter !== 1 ? 1 : 0);
+  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0) + (presentFilter !== null ? 1 : 0);
 
   /* ─── Speech ─── */
 
@@ -272,7 +272,7 @@ export function AllCattle() {
   const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
-  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); setPresentFilter(1); };
+  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); setPresentFilter(null); };
 
   /* ─── Render: loading / error ─── */
 
@@ -604,9 +604,9 @@ export function AllCattle() {
               {pregnantFilter ? "Pregnant" : "Not Pregnant"} <button onClick={() => setPregnantFilter(null)}><X className="w-3 h-3" /></button>
             </span>
           )}
-          {presentFilter !== null && presentFilter !== 1 && (
+          {presentFilter !== null && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium border ${presentFilter === 0 ? "bg-red-100 text-red-700 border-red-200" : "bg-green-100 text-green-700 border-green-200"}`}>
-              {presentFilter === 0 ? "Not Present" : "Present"} <button onClick={() => setPresentFilter(1)}><X className="w-3 h-3" /></button>
+              {presentFilter === 0 ? "Not Present" : "Present"} <button onClick={() => setPresentFilter(null)}><X className="w-3 h-3" /></button>
             </span>
           )}
           {bullMode !== null && (
