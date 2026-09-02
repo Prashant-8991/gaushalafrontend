@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X, Pencil,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X, Pencil, CheckCircle2, XCircle,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid } from "recharts";
 import { useAuth } from "../auth/AuthContext";
 import { ReproductionTimeline, ReproductionTimelineData } from "./ReproductionTimeline";
 import { WeightChart, WeightTimelineData } from "./WeightChart";
 import { LifecycleShowcase } from "./LifecycleTimeline";
+import { motion, AnimatePresence } from "motion/react";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
 interface ParentInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -50,6 +51,10 @@ export function CattleProfile() {
   const [apiData, setApiData] = useState<CattleCardResponse | null>(null);
   const [timelineData, setTimelineData] = useState<ReproductionTimelineData | null>(null);
   const [weightData, setWeightData] = useState<WeightTimelineData | null>(null);
+  const [drillData, setDrillData] = useState<any>(null);
+  const [drillLoading, setDrillLoading] = useState(false);
+  const [drillGender, setDrillGender] = useState<"Male" | "Female" | null>(null);
+  const [drillExpanded, setDrillExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fullscreenChart, setFullscreenChart] = useState<"monthly" | "daily" | null>(null);
@@ -78,6 +83,16 @@ export function CattleProfile() {
       .then(([d, tl, wt]) => { if (!c) { setApiData(d); setTimelineData(tl); setWeightData(wt); setLoading(false); } })
       .catch(e => { if (!c) { setFetchError(e.message); setLoading(false); } });
     return () => { c = true; };
+  }, [tag]);
+
+  useEffect(() => {
+    if (!tag) return;
+    setDrillLoading(true);
+    fetch(`${base}/cattle/${encodeURIComponent(tag)}/maternal-drill`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setDrillData(d))
+      .catch(() => setDrillData(null))
+      .finally(() => setDrillLoading(false));
   }, [tag]);
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-10 h-10 text-saffron animate-spin" /><span className="ml-3 text-muted-foreground">Loading...</span></div>;
@@ -242,6 +257,97 @@ export function CattleProfile() {
                   <button key={s.tag_number} onClick={() => navigate(`/cattle/${s.tag_number}`)} className="flex items-center gap-1.5 bg-muted/30 rounded-lg px-2.5 py-1.5 border border-saffron/10 hover:border-saffron/30 text-xs"><div className="w-5 h-5 rounded-full bg-saffron/20 flex items-center justify-center"><span className="text-[0.5rem] text-saffron font-bold">{s.name?.[0] || "?"}</span></div>{s.name}</button>))}</div></div>
               )}
             </div>
+          </Section>
+
+          {/* MATERNAL & PATERNAL DRILL — New Section */}
+          <Section icon={<Users className="w-4 h-4" />} title="Maternal & Paternal Drill">
+            {drillLoading ? (
+              <div className="space-y-3"><div className="h-24 bg-muted/20 rounded-xl animate-pulse border" /><div className="h-32 bg-muted/20 rounded-xl animate-pulse border" /></div>
+            ) : !drillData ? (
+              <p className="text-sm text-muted-foreground">No drill data available.</p>
+            ) : (
+              <div className="space-y-6">
+                {/* Gender filter for this section */}
+                <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-blue-50/50 to-pink-50/50 border border-saffron/10">
+                  <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">Gender</span>
+                  <button onClick={() => setDrillGender(g => g === "Male" ? null : "Male")} className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${drillGender === "Male" ? "bg-blue-500 text-white border-blue-500" : "bg-white border-saffron/20"}`}>♂ Male</button>
+                  <button onClick={() => setDrillGender(g => g === "Female" ? null : "Female")} className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${drillGender === "Female" ? "bg-pink-500 text-white border-pink-500" : "bg-white border-saffron/20"}`}>♀ Female</button>
+                  {drillGender && <button onClick={() => setDrillGender(null)} className="ml-auto text-xs text-saffron flex items-center gap-1">Clear <X className="w-3 h-3" /></button>}
+                </div>
+
+                {(() => {
+                  const f = (arr: any[]) => drillGender ? arr.filter((r:any) => r.gender && r.gender.toLowerCase() === drillGender.toLowerCase()) : arr;
+                  const isMale = drillData.cattle?.gender && String(drillData.cattle.gender).toLowerCase() === "male";
+                  const sections: { title: string; icon: any; records: any[]; subtitle: string }[] = [
+                    { title: `Selected Cattle — ${drillData.cattle?.name || tag} ${drillData.cattle?.gender ? `(${drillData.cattle.gender})` : ""}`, icon: <Heart className="w-4 h-4" />, records: drillData.cattle ? [drillData.cattle] : [], subtitle: `${drillData.cattle?.tag_number || tag} • ${drillData.cattle?.date_of_birth || "—"}` },
+                    { title: "Mother", icon: <Heart className="w-4 h-4" />, records: drillData.mother ? [drillData.mother] : [], subtitle: drillData.mother ? `${drillData.mother.name} (${drillData.mother.tag_number})` : "No mother" },
+                    { title: "Father", icon: <GitBranch className="w-4 h-4" />, records: (drillData as any).father ? [(drillData as any).father] : [], subtitle: (drillData as any).father ? `${(drillData as any).father.name} (${(drillData as any).father.tag_number})` : "No father (e.g. બીજદાન)" },
+                    { title: `${drillGender === "Male" ? "Brothers" : drillGender === "Female" ? "Sisters" : "Siblings"} — ${f(drillData.sisters).length} found`, icon: <Users className="w-4 h-4" />, records: f(drillData.sisters), subtitle: `Same mother • ${drillGender || "All"}` },
+                    { title: `${drillGender === "Male" ? "Maternal Uncles" : drillGender === "Female" ? "Maternal Aunts" : "Maternal Aunts/Uncles"} — ${f(drillData.maternal_aunts).length} found`, icon: <Baby className="w-4 h-4" />, records: f(drillData.maternal_aunts), subtitle: drillData.maternal_grandmother ? `Grandmother ${drillData.maternal_grandmother.name} (${drillData.maternal_grandmother.tag_number})` : "No grandmother" },
+                    { title: `Children of ${tag} — ${isMale ? "via Father" : "via Mother"} — ${f((drillData as any).children || []).length} found`, icon: <Baby className="w-4 h-4" />, records: f((drillData as any).children || []), subtitle: isMale ? `Offspring where father = ${tag}` : `Offspring where mother = ${tag}` },
+                  ];
+                  return sections.map(sec => (
+                    <div key={sec.title} className="bg-white rounded-xl border border-saffron/10 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 rounded-lg bg-saffron/10 flex items-center justify-center">{sec.icon}</div>
+                        <div><h4 className="text-sm font-bold">{sec.title}</h4><p className="text-xs text-muted-foreground">{sec.subtitle}</p></div>
+                        <span className="ml-auto text-xs px-2 py-1 rounded-full bg-muted border">{sec.records.length}</span>
+                      </div>
+                      {sec.records.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-4 text-center border border-dashed rounded-xl">No records</p>
+                      ) : (
+                        <div className="overflow-x-auto rounded-xl border border-saffron/10">
+                          <table className="w-full text-xs">
+                            <thead><tr className="bg-muted/40 border-b">
+                              <th className="px-3 py-2 text-left font-semibold">Name</th><th className="px-3 py-2 text-left font-semibold">Tag</th><th className="px-3 py-2 text-center font-semibold">Present</th><th className="px-3 py-2 text-left font-semibold">Gender</th><th className="px-3 py-2 text-left font-semibold">DOB</th><th className="px-3 py-2 text-left font-semibold">Physical Mark</th><th className="px-3 py-2 text-left font-semibold">Total</th><th className="px-3 py-2 text-left font-semibold">Avg Milk</th>
+                            </tr></thead>
+                            <tbody>
+                              {sec.records.map((r:any) => {
+                                const isExp = drillExpanded === `${sec.title}-${r.tag_number}`;
+                                const total = r.physical_total;
+                                return (
+                                  <>
+                                    <tr key={r.tag_number} className="border-b hover:bg-muted/20">
+                                      <td className="px-3 py-2 font-medium">{r.name || "—"}</td>
+                                      <td className="px-3 py-2 font-mono text-xs">{r.tag_number}</td>
+                                      <td className="px-3 py-2 text-center">{r.is_present === 1 ? <span title="Present" className="inline-flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-green-600" /></span> : r.is_present === 0 ? <span title="Not Present" className="inline-flex items-center justify-center"><XCircle className="w-4 h-4 text-red-500" /></span> : <span className="text-muted-foreground text-[0.65rem]">—</span>}</td>
+                                      <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[0.65rem] border ${r.gender?.toLowerCase()==="male"?"bg-blue-100 text-blue-700 border-blue-200":"bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender || "—"}</span></td>
+                                      <td className="px-3 py-2 text-xs">{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—"}</td>
+                                      <td className="px-3 py-2"><button onClick={()=> setDrillExpanded(isExp ? null : `${sec.title}-${r.tag_number}`)} className={`px-2 py-1 rounded-full border text-[0.65rem] ${isExp?"bg-saffron text-white border-saffron":"bg-white text-saffron border-saffron/20"}`}>View {isExp?"Hide":"Logs"}</button></td>
+                                      <td className="px-3 py-2 font-bold">{total!=null?total.toFixed(1):"—"}</td>
+                                      <td className="px-3 py-2">{r.average_milk!=null?`${r.average_milk} L`:"—"}</td>
+                                    </tr>
+                                    {isExp && (
+                                      <tr><td colSpan={8} className="p-0">
+                                        <div className="p-3 bg-muted/10">
+                                          {!r.physical_mark ? <p className="text-xs text-muted-foreground text-center py-2">No physical records</p> : (
+                                            <div className="overflow-x-auto rounded border bg-white">
+                                              <table className="w-full text-[0.65rem]">
+                                                <thead><tr className="bg-muted/40">
+                                                  {["Hip Width","Head","Ear","Eye","Muzzle","Horn","Skin","Tail","Hump","Udder","Teat","Dewlap","Milk Vein","Total"].map(h=> <th key={h} className="px-2 py-1.5 text-left whitespace-nowrap">{h}</th>)}
+                                                </tr></thead>
+                                                <tbody><tr>
+                                                  {["hip_width","head","ear","eye","muzzle","horn","skin","tail","hump","udder","teat","dewlap","milk_vein"].map(k=> <td key={k} className="px-2 py-1.5">{(r.physical_mark as any)?.[k] ?? "—"}</td>)}
+                                                  <td className="px-2 py-1.5 font-bold">{total!=null?total.toFixed(1):"—"}</td>
+                                                </tr></tbody>
+                                              </table>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td></tr>
+                                    )}
+                                  </>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
           </Section>
 
           {/* PREGNANCY LOGS — Timeline */}

@@ -19,8 +19,9 @@ type DetailRecord = {
   average_milk: number | null; physical_mark: PhysicalMark | null; physical_total: number | null
 }
 type DetailResponse = {
-  cattle: DetailRecord | null; mother: DetailRecord | null
+  cattle: DetailRecord | null; mother: DetailRecord | null; father: DetailRecord | null
   sisters: DetailRecord[]; maternal_grandmother: DetailRecord | null; maternal_aunts: DetailRecord[]
+  paternal_grandmother: DetailRecord | null; paternal_aunts: DetailRecord[]; children: DetailRecord[]
 }
 
 const PHYS_COLS: { key: keyof PhysicalMark; label: string }[] = [
@@ -42,6 +43,7 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
             <tr className="bg-gradient-to-r from-saffron/5 to-navy/5 border-b border-saffron/10">
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Name</th>
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Tag Number</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Gender</th>
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Date of Birth</th>
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Physical Mark</th>
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Total</th>
@@ -62,6 +64,7 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
                       </div>
                     </td>
                     <td className="px-4 py-3.5"><span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-navy/5 text-navy border border-navy/10">{r.tag_number}</span></td>
+                    <td className="px-4 py-3.5"><span className={`inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-medium border ${r.gender?.toLowerCase()==="male"?"bg-blue-100 text-blue-700 border-blue-200":"bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender || "—"}</span></td>
                     <td className="px-4 py-3.5 whitespace-nowrap text-xs">{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : <span className="text-muted-foreground">—</span>}</td>
                     <td className="px-4 py-3.5">
                       <button onClick={()=>setExpandedTag(isExpanded?null:r.tag_number)} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isExpanded?"bg-saffron text-white border-saffron shadow-sm":"bg-white text-saffron border-saffron/20 hover:bg-saffron hover:text-white"}`}>
@@ -71,7 +74,7 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
                     <td className="px-4 py-3.5">{total!=null?<span className="inline-flex items-center px-2.5 py-1 rounded-full bg-navy text-white text-xs font-bold shadow-sm">{total.toFixed(1)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
                     <td className="px-4 py-3.5">{r.average_milk!=null?<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold"><Milk className="w-3 h-3"/>{r.average_milk} L</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
                   </tr>
-                  <tr className="bg-white"><td colSpan={6} className="p-0">
+                  <tr className="bg-white"><td colSpan={7} className="p-0">
                     <AnimatePresence initial={false}>
                       {isExpanded && (
                         <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} transition={{duration:0.25}} className="overflow-hidden">
@@ -205,21 +208,25 @@ export function CattleDrillDown() {
   const handleExport = () => {
     if(!data) return
     const wb = XLSX.utils.book_new()
-    const toRow = (r:DetailRecord) => [r.name||"", r.tag_number, r.date_of_birth||"", r.average_milk??"", r.physical_mark?.hip_width??"", r.physical_mark?.head??"", r.physical_mark?.ear??"", r.physical_mark?.eye??"", r.physical_mark?.muzzle??"", r.physical_mark?.horn??"", r.physical_mark?.skin??"", r.physical_mark?.tail??"", r.physical_mark?.hump??"", r.physical_mark?.udder??"", r.physical_mark?.teat??"", r.physical_mark?.dewlap??"", r.physical_mark?.milk_vein??"", r.physical_total??""]
-    const hdr = ["Name","Tag Number","Date of Birth","Average Milk","Hip Width","Head","Ear","Eye","Muzzle","Horn","Skin","Tail","Hump","Udder","Teat","Dewlap","Milk Vein","Total Physical Mark"]
+    const toRow = (r:DetailRecord) => [r.name||"", r.tag_number, r.date_of_birth||"", r.gender||"", r.average_milk??"", r.physical_mark?.hip_width??"", r.physical_mark?.head??"", r.physical_mark?.ear??"", r.physical_mark?.eye??"", r.physical_mark?.muzzle??"", r.physical_mark?.horn??"", r.physical_mark?.skin??"", r.physical_mark?.tail??"", r.physical_mark?.hump??"", r.physical_mark?.udder??"", r.physical_mark?.teat??"", r.physical_mark?.dewlap??"", r.physical_mark?.milk_vein??"", r.physical_total??""]
+    const hdr = ["Name","Tag Number","Date of Birth","Gender","Average Milk","Hip Width","Head","Ear","Eye","Muzzle","Horn","Skin","Tail","Hump","Udder","Teat","Dewlap","Milk Vein","Total Physical Mark"]
     const sheets: [string, DetailRecord[]][] = [
       ["Cattle", data.cattle ? [data.cattle] : []],
       ["Mother", data.mother ? [data.mother] : []],
+      ["Father", (data as any).father ? [(data as any).father] : []],
       ["Sisters", data.sisters],
       ["Maternal Aunts", data.maternal_aunts],
+      ["Paternal Aunts", (data as any).paternal_aunts || []],
+      ["Children", (data as any).children || []],
     ]
     sheets.forEach(([name, recs])=>{
       const sh = XLSX.utils.aoa_to_sheet([hdr, ...recs.map(toRow as any)])
       sh["!cols"] = hdr.map(()=>({wch:14}))
       XLSX.utils.book_append_sheet(wb, sh, name)
     })
+    const total = 1 + (data.mother?1:0) + ((data as any).father?1:0) + data.sisters.length + data.maternal_aunts.length + ((data as any).paternal_aunts?.length||0) + ((data as any).children?.length||0)
     XLSX.writeFile(wb, `cattle_${selected}_maternal_${new Date().toISOString().slice(0,10)}.xlsx`)
-    toast.success("Excel file exported successfully.",{description:`${1 + (data.mother?1:0) + data.sisters.length + data.maternal_aunts.length} records exported`})
+    toast.success("Excel file exported successfully.",{description:`${total} records exported`})
   }
 
   return (
@@ -377,17 +384,24 @@ export function CattleDrillDown() {
       : error ? <div className="flex flex-col items-center py-16 text-center"><AlertTriangle className="w-8 h-8 text-red-400 mb-3"/><p className="font-medium">Failed to load</p><p className="text-sm text-muted-foreground">{error}</p></div>
       : data && (
         <>
-          <SectionCard title={`Selected Cattle — ${data.cattle?.name || selected}`} icon={<Crown className="w-5 h-5"/>} records={data.cattle ? [data.cattle] : []} subtitle={`${data.cattle?.tag_number || selected} • ${data.cattle?.date_of_birth || "—"}`} />
-          <SectionCard title="Mother Information" icon={<Heart className="w-5 h-5"/>} records={data.mother ? [data.mother] : []} subtitle={data.mother ? `${data.mother.name} (${data.mother.tag_number})` : "No mother recorded"} />
+          <SectionCard title={`Selected Cattle — ${data.cattle?.name || selected} ${data.cattle?.gender ? `(${data.cattle.gender})` : ""}`} icon={<Crown className="w-5 h-5"/>} records={data.cattle ? [data.cattle] : []} subtitle={`${data.cattle?.tag_number || selected} • ${data.cattle?.date_of_birth || "—"} • ${data.cattle?.gender || "—"}`} />
+          <SectionCard title="Mother Information" icon={<Heart className="w-5 h-5"/>} records={data.mother ? [data.mother] : []} subtitle={data.mother ? `${data.mother.name} (${data.mother.tag_number}) • ${data.mother.gender || ""}` : "No mother recorded"} />
+          <SectionCard title="Father Information" icon={<GitBranch className="w-5 h-5"/>} records={(data as any).father ? [(data as any).father] : []} subtitle={(data as any).father ? `${(data as any).father.name} (${(data as any).father.tag_number}) • ${(data as any).father.gender || ""}` : "No father recorded (e.g. બીજદાન / G-008 if applicable)"} />
           {(() => {
             const fs = genderFilter ? data.sisters.filter(s => s.gender && s.gender.toLowerCase() === genderFilter.toLowerCase()) : data.sisters;
             const fa = genderFilter ? data.maternal_aunts.filter(a => a.gender && a.gender.toLowerCase() === genderFilter.toLowerCase()) : data.maternal_aunts;
+            const pa = genderFilter ? ((data as any).paternal_aunts || []).filter((a:DetailRecord) => a.gender && a.gender.toLowerCase() === genderFilter.toLowerCase()) : ((data as any).paternal_aunts || []);
+            const ch = genderFilter ? ((data as any).children || []).filter((c:DetailRecord) => c.gender && c.gender.toLowerCase() === genderFilter.toLowerCase()) : ((data as any).children || []);
             const sLabel = genderFilter === "Male" ? "Brothers" : genderFilter === "Female" ? "Sisters" : "Siblings";
             const aLabel = genderFilter === "Male" ? "Maternal Uncles" : genderFilter === "Female" ? "Maternal Aunts" : "Maternal Aunts/Uncles";
+            const paLabel = genderFilter === "Male" ? "Paternal Uncles" : genderFilter === "Female" ? "Paternal Aunts" : "Paternal Aunts/Uncles";
+            const isMaleCattle = data.cattle?.gender && data.cattle.gender.toLowerCase() === "male";
             return (
               <>
                 <SectionCard title={`${sLabel} — ${genderFilter || "All"} & Present (same mother) — ${fs.length} found`} icon={<Users className="w-5 h-5"/>} records={fs} subtitle={data.mother ? `Children of ${data.mother.name} (${data.mother.tag_number}) excluding ${selected} • ${genderFilter || "All Genders"}` : "—"} />
                 <SectionCard title={`${aLabel} — ${genderFilter || "All"} & Present — ${fa.length} found`} icon={<Baby className="w-5 h-5"/>} records={fa} subtitle={data.maternal_grandmother ? `Children of grandmother ${data.maternal_grandmother.name} (${data.maternal_grandmother.tag_number}) excluding mother • ${genderFilter || "All Genders"}` : "No grandmother found"} />
+                <SectionCard title={`${paLabel} — ${genderFilter || "All"} & Present — ${pa.length} found`} icon={<GitBranch className="w-5 h-5"/>} records={pa} subtitle={(data as any).paternal_grandmother ? `Children of paternal grandmother ${(data as any).paternal_grandmother.name} (${(data as any).paternal_grandmother.tag_number}) excluding father • ${genderFilter || "All Genders"}` : "No paternal grandmother found"} />
+                <SectionCard title={`Children of ${selected} — ${isMaleCattle ? "via Father" : "via Mother"} — ${ch.length} found ${genderFilter ? `(${genderFilter})` : ""}`} icon={<Baby className="w-5 h-5"/>} records={ch} subtitle={isMaleCattle ? `Offspring where father = ${selected} • ${genderFilter || "All Genders"}` : `Offspring where mother = ${selected} • ${genderFilter || "All Genders"}`} />
               </>
             );
           })()}
