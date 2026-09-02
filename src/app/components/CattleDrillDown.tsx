@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { ChevronDown, ChevronUp, Download, Heart, Milk, Eye, Users, Baby, SearchX, Search, Loader2, AlertTriangle, FileSpreadsheet, Crown, GitBranch } from "lucide-react"
+import { ChevronDown, ChevronUp, Download, Heart, Milk, Eye, Users, Baby, SearchX, Search, Loader2, AlertTriangle, FileSpreadsheet, Crown, GitBranch, X } from "lucide-react"
 import * as XLSX from "xlsx"
 import { toast } from "sonner"
 
@@ -15,7 +15,7 @@ type PhysicalMark = {
   teat: number | null; dewlap: number | null; milk_vein: number | null
 }
 type DetailRecord = {
-  name: string | null; tag_number: string; date_of_birth: string | null
+  name: string | null; tag_number: string; date_of_birth: string | null; gender: string | null
   average_milk: number | null; physical_mark: PhysicalMark | null; physical_total: number | null
 }
 type DetailResponse = {
@@ -141,6 +141,8 @@ export function CattleDrillDown() {
   const [bullData, setBullData] = useState<{bull_tag_number:string; bull_name:string|null; count:number; children: DetailRecord[]}|null>(null)
   const [bullLoading, setBullLoading] = useState(false)
   const [bullExpanded, setBullExpanded] = useState<string|null>(null)
+  const [genderFilter, setGenderFilter] = useState<"Male"|"Female"|null>(null)
+  const [bullGenderFilter, setBullGenderFilter] = useState<"Male"|"Female"|null>(null)
 
   useEffect(()=>{
     fetch(`${API_BASE}/cattle/bull-tags`).then(r=>r.json()).then((rows:any[])=>{
@@ -327,14 +329,29 @@ export function CattleDrillDown() {
           {bullMode && <span className="inline-flex items-center px-3 py-2 rounded-xl bg-muted text-xs">{bullMode==="bull" ? `Showing only ${selectedBull}'s children` : `Hiding ${selectedBull}'s children`}</span>}
         </div>
         {bullMode==="bull" && (
-          <div>
+          <div className="space-y-3">
+            {/* Gender filter inside Bull Filter */}
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-blue-50/50 to-pink-50/50 border border-saffron/10">
+              <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground flex items-center gap-1">Gender</span>
+              <button onClick={()=> setBullGenderFilter(bullGenderFilter==="Male"?null:"Male")} className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${bullGenderFilter==="Male"?"bg-blue-500 text-white border-blue-500 shadow":"bg-white text-muted-foreground border-saffron/20 hover:border-blue-300"}`}>♂ Male</button>
+              <button onClick={()=> setBullGenderFilter(bullGenderFilter==="Female"?null:"Female")} className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${bullGenderFilter==="Female"?"bg-pink-500 text-white border-pink-500 shadow":"bg-white text-muted-foreground border-saffron/20 hover:border-pink-300"}`}>♀ Female</button>
+              {bullGenderFilter && <button onClick={()=> setBullGenderFilter(null)} className="ml-auto text-xs font-medium text-saffron flex items-center gap-1">Clear <X className="w-3 h-3" /></button>}
+              {bullGenderFilter && <span className="text-xs text-muted-foreground">Filtering: {bullGenderFilter}</span>}
+            </div>
             {bullLoading ? <div className="h-24 bg-muted/20 rounded-xl animate-pulse border"/> :
               bullData ? (
                 bullData.children.length===0 ? <div className="text-center py-6 rounded-xl border border-dashed bg-muted/10 text-sm text-muted-foreground">No children found for {selectedBull}</div> :
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold tracking-wider uppercase text-navy">{bullData.count} children of {selectedBull} — {bullData.bull_name}</p>
-                  <SingleTable records={bullData.children as DetailRecord[]} expandedTag={bullExpanded} setExpandedTag={setBullExpanded} />
-                </div>
+                (() => {
+                  const filteredBullChildren = bullGenderFilter ? bullData.children.filter((c:any) => c.gender && c.gender.toLowerCase() === bullGenderFilter.toLowerCase()) : bullData.children;
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold tracking-wider uppercase text-navy">{filteredBullChildren.length} / {bullData.count} children of {selectedBull} — {bullData.bull_name} {bullGenderFilter ? `• ${bullGenderFilter}` : ""}</p>
+                      {filteredBullChildren.length===0 ? <div className="text-center py-4 rounded-xl border border-dashed bg-muted/10 text-sm text-muted-foreground">No {bullGenderFilter} children for {selectedBull}</div> :
+                        <SingleTable records={filteredBullChildren as DetailRecord[]} expandedTag={bullExpanded} setExpandedTag={setBullExpanded} />
+                      }
+                    </div>
+                  );
+                })()
               ) : <div className="text-sm text-muted-foreground">Click "Bull {selectedBull}" to load children.</div>
             }
           </div>
@@ -347,14 +364,33 @@ export function CattleDrillDown() {
         )}
       </div>
 
+      {/* Gender Filter */}
+      <div className="bg-white rounded-2xl border border-saffron/10 p-4 flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground flex items-center gap-1.5">Gender</span>
+        <button onClick={()=> setGenderFilter(genderFilter==="Male"?null:"Male")} className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-all ${genderFilter==="Male"?"bg-blue-500 text-white border-blue-500 shadow":"bg-white text-muted-foreground border-saffron/20 hover:border-blue-300"}`}>♂ Male</button>
+        <button onClick={()=> setGenderFilter(genderFilter==="Female"?null:"Female")} className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-all ${genderFilter==="Female"?"bg-pink-500 text-white border-pink-500 shadow":"bg-white text-muted-foreground border-saffron/20 hover:border-pink-300"}`}>♀ Female</button>
+        {genderFilter && <button onClick={()=> setGenderFilter(null)} className="ml-auto text-xs font-medium text-saffron hover:text-saffron-dark flex items-center gap-1">Clear <X className="w-3 h-3" /></button>}
+        {genderFilter && <span className="text-xs text-muted-foreground">Filtering: {genderFilter}</span>}
+      </div>
+
       {loading ? <div className="space-y-4"><div className="h-64 bg-muted/20 rounded-2xl animate-pulse border"/><div className="h-64 bg-muted/20 rounded-2xl animate-pulse border"/></div>
       : error ? <div className="flex flex-col items-center py-16 text-center"><AlertTriangle className="w-8 h-8 text-red-400 mb-3"/><p className="font-medium">Failed to load</p><p className="text-sm text-muted-foreground">{error}</p></div>
       : data && (
         <>
           <SectionCard title={`Selected Cattle — ${data.cattle?.name || selected}`} icon={<Crown className="w-5 h-5"/>} records={data.cattle ? [data.cattle] : []} subtitle={`${data.cattle?.tag_number || selected} • ${data.cattle?.date_of_birth || "—"}`} />
           <SectionCard title="Mother Information" icon={<Heart className="w-5 h-5"/>} records={data.mother ? [data.mother] : []} subtitle={data.mother ? `${data.mother.name} (${data.mother.tag_number})` : "No mother recorded"} />
-          <SectionCard title={`Sisters — Female & Present (same mother) — ${data.sisters.length} found`} icon={<Users className="w-5 h-5"/>} records={data.sisters} subtitle={data.mother ? `Daughters of ${data.mother.name} (${data.mother.tag_number}) excluding ${selected}` : "—"} />
-          <SectionCard title={`Maternal Aunts — Female & Present — ${data.maternal_aunts.length} found`} icon={<Baby className="w-5 h-5"/>} records={data.maternal_aunts} subtitle={data.maternal_grandmother ? `Daughters of grandmother ${data.maternal_grandmother.name} (${data.maternal_grandmother.tag_number}) excluding mother` : "No grandmother found"} />
+          {(() => {
+            const fs = genderFilter ? data.sisters.filter(s => s.gender && s.gender.toLowerCase() === genderFilter.toLowerCase()) : data.sisters;
+            const fa = genderFilter ? data.maternal_aunts.filter(a => a.gender && a.gender.toLowerCase() === genderFilter.toLowerCase()) : data.maternal_aunts;
+            const sLabel = genderFilter === "Male" ? "Brothers" : genderFilter === "Female" ? "Sisters" : "Siblings";
+            const aLabel = genderFilter === "Male" ? "Maternal Uncles" : genderFilter === "Female" ? "Maternal Aunts" : "Maternal Aunts/Uncles";
+            return (
+              <>
+                <SectionCard title={`${sLabel} — ${genderFilter || "All"} & Present (same mother) — ${fs.length} found`} icon={<Users className="w-5 h-5"/>} records={fs} subtitle={data.mother ? `Children of ${data.mother.name} (${data.mother.tag_number}) excluding ${selected} • ${genderFilter || "All Genders"}` : "—"} />
+                <SectionCard title={`${aLabel} — ${genderFilter || "All"} & Present — ${fa.length} found`} icon={<Baby className="w-5 h-5"/>} records={fa} subtitle={data.maternal_grandmother ? `Children of grandmother ${data.maternal_grandmother.name} (${data.maternal_grandmother.tag_number}) excluding mother • ${genderFilter || "All Genders"}` : "No grandmother found"} />
+              </>
+            );
+          })()}
         </>
       )}
     </div>
