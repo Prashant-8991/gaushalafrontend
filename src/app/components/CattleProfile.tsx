@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, Maximize2, X, Pencil, CheckCircle2, XCircle,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid } from "recharts";
+import { ResponsiveContainer, Tooltip, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { useAuth } from "../auth/AuthContext";
 import { ReproductionTimeline, ReproductionTimelineData } from "./ReproductionTimeline";
 import { WeightChart, WeightTimelineData } from "./WeightChart";
 import { LifecycleShowcase } from "./LifecycleTimeline";
+import { MilkingData } from "./MilkingData";
 import { motion, AnimatePresence } from "motion/react";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -57,7 +58,6 @@ export function CattleProfile() {
   const [drillExpanded, setDrillExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [fullscreenChart, setFullscreenChart] = useState<"monthly" | "daily" | null>(null);
 
   const ov = apiData?.overview;
   const bs = ov?.breed_score;
@@ -65,13 +65,6 @@ export function CattleProfile() {
   const totalScore = breedScores.length ? avg(breedScores.map(s => s.score)) : 0;
   const isMilking = ov?.average_milk_per_day != null && ov.average_milk_per_day > 0;
   const pregnancyLogs = apiData?.pregnancy_logs || [];
-
-  const milkWithAvg = apiData?.milk_by_month?.length
-    ? (() => { const vals = apiData.milk_by_month.map(m => m.milk || 0); return { data: apiData.milk_by_month, average: +avg(vals).toFixed(1) }; })()
-    : null;
-  const dailyWithAvg = apiData?.milk_by_day_only_for_month?.length
-    ? (() => { const vals = apiData.milk_by_day_only_for_month.map(m => m.milk || 0); return { data: apiData.milk_by_day_only_for_month, average: +avg(vals).toFixed(1) }; })()
-    : null;
 
   useEffect(() => { if (!tag) { setLoading(false); return; }
     let c = false; setLoading(true);
@@ -149,49 +142,9 @@ export function CattleProfile() {
             </div>
           </Section>
 
-          {/* MILK */}
-          <Section icon={<Droplets className="w-4 h-4" />} title="Milk Production">
-            {!isMilking ? <p className="text-sm text-muted-foreground">Currently not milking.</p> : <>
-              {milkWithAvg && milkWithAvg.data.length > 0 && (
-                <div className="bg-muted/30 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">Monthly (Avg: <span className="text-saffron font-semibold">{milkWithAvg.average} L</span>)</p>
-                    <button onClick={() => setFullscreenChart("monthly")} className="p-1.5 rounded-lg hover:bg-white/50 transition-colors" title="Full Screen"><Maximize2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                  </div>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <AreaChart data={milkWithAvg.data}>
-                      <defs><linearGradient id="milkG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.4} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 9 }} angle={-45} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} axisLine={false} /><Tooltip />
-                      <ReferenceLine y={milkWithAvg.average} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${milkWithAvg.average}L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 10 }} />
-                      <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={2} fill="url(#milkG)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              {dailyWithAvg && dailyWithAvg.data.length > 0 && (
-                <div className="bg-muted/30 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">Daily — Last 30 Days (Avg: <span className="text-navy font-semibold">{dailyWithAvg.average} L</span>)</p>
-                    <button onClick={() => setFullscreenChart("daily")} className="p-1.5 rounded-lg hover:bg-white/50 transition-colors" title="Full Screen"><Maximize2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                  </div>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <AreaChart data={dailyWithAvg.data}>
-                      <defs><linearGradient id="dailyG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#1B3A6B" stopOpacity={0.3} /><stop offset="95%" stopColor="#1B3A6B" stopOpacity={0} /></linearGradient></defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 8 }} axisLine={false} tickFormatter={v => v?.slice(5, 10) || ""} />
-                      <YAxis tick={{ fontSize: 9 }} axisLine={false} /><Tooltip />
-                      <ReferenceLine y={dailyWithAvg.average} stroke="#FF9933" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${dailyWithAvg.average}L`, position: "insideTopRight", fill: "#FF9933", fontSize: 10 }} />
-                      <Area type="monotone" dataKey="milk" stroke="#1B3A6B" strokeWidth={1.5} fill="url(#dailyG)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              {ov?.average_milk_per_day != null && (
-                <div className="bg-saffron/5 rounded-xl p-4 text-center border border-saffron/10"><p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Daily</p><p className="text-2xl font-bold text-saffron">{ov.average_milk_per_day} <span className="text-sm text-muted-foreground">L/day</span></p></div>
-              )}
-            </>}
+          {/* MILKING DATA — Single Graph with Daily / Monthly / Yearly */}
+          <Section icon={<Droplets className="w-4 h-4" />} title="Milking Data">
+            <MilkingData tag={tag} />
           </Section>
 
           {/* WEIGHT */}
@@ -422,49 +375,6 @@ export function CattleProfile() {
       </div>
 
       <div className="no-print text-center pb-4"><button onClick={() => navigate(-1)} className="text-xs text-saffron hover:underline">Back</button></div>
-
-      {/* Fullscreen Chart Modal */}
-      {fullscreenChart && (() => {
-        const isMonthly = fullscreenChart === "monthly";
-        const chartData = isMonthly ? milkWithAvg?.data : dailyWithAvg?.data;
-        const chartAvg = isMonthly ? milkWithAvg?.average : dailyWithAvg?.average;
-        const title = isMonthly ? "Monthly Milk Production" : "Daily Milk — Last 30 Days";
-        const strokeColor = isMonthly ? "#FF9933" : "#1B3A6B";
-        const avgColor = isMonthly ? "#1B3A6B" : "#FF9933";
-        const gradientId = isMonthly ? "fullMilkG" : "fullDailyG";
-
-        return (
-          <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col" onClick={() => setFullscreenChart(null)}>
-            <div className="flex items-center justify-between px-6 py-4 bg-white/10 backdrop-blur shrink-0">
-              <h2 className="text-white text-lg font-bold">{ov?.name} — {title}</h2>
-              <button onClick={() => setFullscreenChart(null)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5 text-white" /></button>
-            </div>
-            <div className="flex-1 p-6" onClick={e => e.stopPropagation()}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData || []} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
-                  <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={strokeColor} stopOpacity={0.5} />
-                      <stop offset="95%" stopColor={strokeColor} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} angle={-45} axisLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", fontSize: "13px" }} labelStyle={{ color: "#fff" }} />
-                  {chartAvg != null && <ReferenceLine y={chartAvg} stroke={avgColor} strokeDasharray="8 4" strokeWidth={2} label={{ value: `Average ${chartAvg}L`, position: "insideTopRight", fill: avgColor, fontSize: 13, fontWeight: "bold" }} />}
-                  <Area type="monotone" dataKey="milk" stroke={strokeColor} strokeWidth={3} fill={`url(#${gradientId})`} dot={{ r: 3, fill: strokeColor }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
-              <div className="flex items-center gap-2"><div className="w-4 h-1 rounded" style={{ backgroundColor: strokeColor }} /><span className="text-white/70 text-sm">Milk Production</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded" style={{ backgroundColor: avgColor, border: "1px dashed" }} /><span className="text-white/70 text-sm">Average ({chartAvg} L)</span></div>
-              <div className="text-white/50 text-sm ml-auto">Click anywhere to close</div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
