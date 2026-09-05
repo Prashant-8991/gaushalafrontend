@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { ChevronDown, ChevronUp, Download, Heart, Milk, Eye, Users, Baby, SearchX, Search, Loader2, AlertTriangle, FileSpreadsheet, Crown, GitBranch, X, CheckCircle2, XCircle } from "lucide-react"
 import * as XLSX from "xlsx"
@@ -34,6 +35,7 @@ const PHYS_COLS: { key: keyof PhysicalMark; label: string }[] = [
 const EXCEL_HEADER = ["Name","Tag Number","Date of Birth","Average Milk","Hip Width","Head","Ear","Eye","Muzzle","Horn","Skin","Tail","Hump","Udder","Teat","Dewlap","Milk Vein","Total Physical Mark"]
 
 function SingleTable({ records, expandedTag, setExpandedTag }: { records: DetailRecord[]; expandedTag: string|null; setExpandedTag:(t:string|null)=>void }) {
+  const navigate = useNavigate()
   if (records.length===0) return <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-saffron/20 rounded-xl bg-muted/10"><SearchX className="w-7 h-7 text-muted-foreground/40 mb-2"/><p className="text-sm font-medium text-muted-foreground">No records found</p></div>
   return (
     <div className="overflow-hidden rounded-xl border border-saffron/10 bg-white">
@@ -59,17 +61,17 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
                 <>
                   <tr key={r.tag_number} className={`${idx%2===0?"bg-white":"bg-muted/20"} hover:bg-saffron/[0.04] transition-colors border-b border-saffron/[0.06]`}>
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2.5">
+                      <button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity text-left" title={`View ${r.name || r.tag_number} profile`}>
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-saffron/15 to-saffron/5 border border-saffron/20 flex items-center justify-center shrink-0"><span className="text-xs font-bold text-saffron">{(r.name||"?").charAt(0).toUpperCase()}</span></div>
-                        <span className="font-medium text-foreground whitespace-nowrap">{r.name||"—"}</span>
-                      </div>
+                        <span className="font-medium text-foreground whitespace-nowrap hover:text-saffron hover:underline">{r.name||"—"}</span>
+                      </button>
                     </td>
-                    <td className="px-4 py-3.5"><span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-navy/5 text-navy border border-navy/10">{r.tag_number}</span></td>
+                    <td className="px-4 py-3.5"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-navy/5 text-navy border border-navy/10 hover:bg-navy/10 hover:text-saffron transition-colors" title={`View ${r.tag_number} profile`}>{r.tag_number}</button></td>
                     <td className="px-4 py-3.5 text-center">{(r as any).is_present === 1 ? <span title="Present" className="inline-flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-green-600" /></span> : (r as any).is_present === 0 ? <span title="Not Present" className="inline-flex items-center justify-center"><XCircle className="w-5 h-5 text-red-500" /></span> : <span className="text-muted-foreground text-xs">—</span>}</td>
                     <td className="px-4 py-3.5"><span className={`inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-medium border ${r.gender?.toLowerCase()==="male"?"bg-blue-100 text-blue-700 border-blue-200":"bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender || "—"}</span></td>
                     <td className="px-4 py-3.5 whitespace-nowrap text-xs">{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : <span className="text-muted-foreground">—</span>}</td>
                     <td className="px-4 py-3.5">
-                      <button onClick={()=>setExpandedTag(isExpanded?null:r.tag_number)} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isExpanded?"bg-saffron text-white border-saffron shadow-sm":"bg-white text-saffron border-saffron/20 hover:bg-saffron hover:text-white"}`}>
+                      <button onClick={(e)=>{e.stopPropagation(); setExpandedTag(isExpanded?null:r.tag_number)}} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isExpanded?"bg-saffron text-white border-saffron shadow-sm":"bg-white text-saffron border-saffron/20 hover:bg-saffron hover:text-white"}`}>
                         <Eye className="w-3.5 h-3.5"/>View Logs{isExpanded?<ChevronUp className="w-3.5 h-3.5"/>:<ChevronDown className="w-3.5 h-3.5"/>}
                       </button>
                     </td>

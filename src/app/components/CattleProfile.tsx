@@ -260,13 +260,13 @@ export function CattleProfile() {
                                 const total = r.physical_total;
                                 return (
                                   <>
-                                    <tr key={r.tag_number} className="border-b hover:bg-muted/20">
-                                      <td className="px-3 py-2 font-medium">{r.name || "—"}</td>
-                                      <td className="px-3 py-2 font-mono text-xs">{r.tag_number}</td>
+                                    <tr key={r.tag_number} className="border-b hover:bg-muted/20 group">
+                                      <td className="px-3 py-2 font-medium"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="text-left hover:text-saffron hover:underline font-medium transition-colors" title={`View ${r.name || r.tag_number} profile`}>{r.name || "—"}</button></td>
+                                      <td className="px-3 py-2 font-mono text-xs"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="font-mono hover:text-saffron hover:underline transition-colors" title={`View ${r.tag_number} profile`}>{r.tag_number}</button></td>
                                       <td className="px-3 py-2 text-center">{r.is_present === 1 ? <span title="Present" className="inline-flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-green-600" /></span> : r.is_present === 0 ? <span title="Not Present" className="inline-flex items-center justify-center"><XCircle className="w-4 h-4 text-red-500" /></span> : <span className="text-muted-foreground text-[0.65rem]">—</span>}</td>
                                       <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[0.65rem] border ${r.gender?.toLowerCase()==="male"?"bg-blue-100 text-blue-700 border-blue-200":"bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender || "—"}</span></td>
                                       <td className="px-3 py-2 text-xs">{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—"}</td>
-                                      <td className="px-3 py-2"><button onClick={()=> setDrillExpanded(isExp ? null : `${sec.title}-${r.tag_number}`)} className={`px-2 py-1 rounded-full border text-[0.65rem] ${isExp?"bg-saffron text-white border-saffron":"bg-white text-saffron border-saffron/20"}`}>View {isExp?"Hide":"Logs"}</button></td>
+                                      <td className="px-3 py-2"><button onClick={(e)=> {e.stopPropagation(); setDrillExpanded(isExp ? null : `${sec.title}-${r.tag_number}`)}} className={`px-2 py-1 rounded-full border text-[0.65rem] ${isExp?"bg-saffron text-white border-saffron":"bg-white text-saffron border-saffron/20"}`}>View {isExp?"Hide":"Logs"}</button></td>
                                       <td className="px-3 py-2 font-bold">{total!=null?total.toFixed(1):"—"}</td>
                                       <td className="px-3 py-2">{r.average_milk!=null?`${r.average_milk} L`:"—"}</td>
                                     </tr>
