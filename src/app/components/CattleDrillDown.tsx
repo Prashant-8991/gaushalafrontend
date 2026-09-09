@@ -17,7 +17,7 @@ type PhysicalMark = {
 }
 type DetailRecord = {
   name: string | null; tag_number: string; date_of_birth: string | null; gender: string | null
-  is_present: number | null; average_milk: number | null; physical_mark: PhysicalMark | null; physical_total: number | null
+  is_present: number | null; average_milk: number | null; milk_remarks: string | null; physical_mark: PhysicalMark | null; physical_total: number | null
 }
 type DetailResponse = {
   cattle: DetailRecord | null; mother: DetailRecord | null; father: DetailRecord | null
@@ -51,6 +51,7 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Physical Mark</th>
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Total</th>
               <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Average Milk</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap">Milk Remarks</th>
             </tr>
           </thead>
           <tbody>
@@ -77,8 +78,9 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
                     </td>
                     <td className="px-4 py-3.5">{total!=null?<span className="inline-flex items-center px-2.5 py-1 rounded-full bg-navy text-white text-xs font-bold shadow-sm">{total.toFixed(1)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
                     <td className="px-4 py-3.5">{r.average_milk!=null?<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold"><Milk className="w-3 h-3"/>{r.average_milk} L</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+                    <td className="px-4 py-3.5 max-w-[180px]"><span title={(r as any).milk_remarks || ""} className="block truncate text-xs leading-tight">{(r as any).milk_remarks && String((r as any).milk_remarks).trim() ? String((r as any).milk_remarks) : <span className="text-muted-foreground">—</span>}</span></td>
                   </tr>
-                  <tr className="bg-white"><td colSpan={8} className="p-0">
+                  <tr className="bg-white"><td colSpan={9} className="p-0">
                     <AnimatePresence initial={false}>
                       {isExpanded && (
                         <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} transition={{duration:0.25}} className="overflow-hidden">

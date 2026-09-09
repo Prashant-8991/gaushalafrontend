@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle, MessageSquare,
 } from "lucide-react";
 import { ResponsiveContainer, Tooltip, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { useAuth } from "../auth/AuthContext";
@@ -23,7 +23,7 @@ interface CattleCardOverview {
   acquisition_type: string | null; generation: string | null; DOB: string | null; total_childrens: number | null;
   siblings: SiblingInfo[]; is_present: number | null; lactation_cycle: string | null; last_calving_date: string | null;
   mother: ParentInfo | string | null; father: ParentInfo | string | null; childrens: SiblingInfo[];
-  breed_score: BreedScore | null; weight: string | null; age: string | null; average_milk_per_day: number | null;
+  breed_score: BreedScore | null; weight: string | null; age: string | null; average_milk_per_day: number | null; milk_remarks: string | null;
 }
 interface CattleCardResponse {
   overview: CattleCardOverview | null; milk_by_month: MilkRecord[]; milk_by_day_only_for_month: MilkRecord[];
@@ -147,6 +147,21 @@ export function CattleProfile() {
             <MilkingData tag={tag} />
           </Section>
 
+          {/* MILK REMARKS — from cattle_data.milk_remarks */}
+          <Section icon={<MessageSquare className="w-4 h-4" />} title="Milk Remarks">
+            {ov?.milk_remarks && ov.milk_remarks.trim() !== "" ? (
+              <div className="bg-amber-50/60 border border-amber-200/50 rounded-xl p-4 flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0"><MessageSquare className="w-4 h-4 text-amber-700" /></div>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap flex-1">{ov.milk_remarks}</p>
+              </div>
+            ) : (
+              <div className="text-center py-8 border border-dashed border-saffron/20 rounded-xl bg-muted/10">
+                <MessageSquare className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No milk remarks available</p>
+              </div>
+            )}
+          </Section>
+
           {/* WEIGHT */}
           <Section icon={<Scale className="w-4 h-4" />} title="Weight History">
             {weightData ? (
@@ -252,7 +267,7 @@ export function CattleProfile() {
                         <div className="overflow-x-auto rounded-xl border border-saffron/10">
                           <table className="w-full text-xs">
                             <thead><tr className="bg-muted/40 border-b">
-                              <th className="px-3 py-2 text-left font-semibold">Name</th><th className="px-3 py-2 text-left font-semibold">Tag</th><th className="px-3 py-2 text-center font-semibold">Present</th><th className="px-3 py-2 text-left font-semibold">Gender</th><th className="px-3 py-2 text-left font-semibold">DOB</th><th className="px-3 py-2 text-left font-semibold">Physical Mark</th><th className="px-3 py-2 text-left font-semibold">Total</th><th className="px-3 py-2 text-left font-semibold">Avg Milk</th>
+                              <th className="px-3 py-2 text-left font-semibold">Name</th><th className="px-3 py-2 text-left font-semibold">Tag</th><th className="px-3 py-2 text-center font-semibold">Present</th><th className="px-3 py-2 text-left font-semibold">Gender</th><th className="px-3 py-2 text-left font-semibold">DOB</th><th className="px-3 py-2 text-left font-semibold">Physical Mark</th><th className="px-3 py-2 text-left font-semibold">Total</th><th className="px-3 py-2 text-left font-semibold">Avg Milk</th><th className="px-3 py-2 text-left font-semibold">Milk Remarks</th>
                             </tr></thead>
                             <tbody>
                               {sec.records.map((r:any) => {
@@ -269,9 +284,10 @@ export function CattleProfile() {
                                       <td className="px-3 py-2"><button onClick={(e)=> {e.stopPropagation(); setDrillExpanded(isExp ? null : `${sec.title}-${r.tag_number}`)}} className={`px-2 py-1 rounded-full border text-[0.65rem] ${isExp?"bg-saffron text-white border-saffron":"bg-white text-saffron border-saffron/20"}`}>View {isExp?"Hide":"Logs"}</button></td>
                                       <td className="px-3 py-2 font-bold">{total!=null?total.toFixed(1):"—"}</td>
                                       <td className="px-3 py-2">{r.average_milk!=null?`${r.average_milk} L`:"—"}</td>
+                                      <td className="px-3 py-2 max-w-[160px]"><span title={r.milk_remarks || ""} className="block truncate text-[0.7rem] leading-tight">{r.milk_remarks && r.milk_remarks.trim() ? r.milk_remarks : <span className="text-muted-foreground">—</span>}</span></td>
                                     </tr>
                                     {isExp && (
-                                      <tr><td colSpan={8} className="p-0">
+                                      <tr><td colSpan={9} className="p-0">
                                         <div className="p-3 bg-muted/10">
                                           {!r.physical_mark ? <p className="text-xs text-muted-foreground text-center py-2">No physical records</p> : (
                                             <div className="overflow-x-auto rounded border bg-white">
