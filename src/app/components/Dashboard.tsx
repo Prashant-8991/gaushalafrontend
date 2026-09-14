@@ -73,6 +73,17 @@ export function Dashboard() {
     queryFn: getDashboardData
   });
 
+  // Hero counts — always show true active vs total, independent of herd filter
+  const { data: heroData } = useQuery({
+    queryKey: ['dashboard-hero'],
+    queryFn: async (): Promise<DashboardApiResponse> => {
+      const res = await fetch(`${API_BASE}/dashboard?is_present=1`);
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
   interface TopMilkerCurrentMonth {
     tag_number: string;
     name: string;
@@ -214,10 +225,10 @@ export function Dashboard() {
 
             <p className="text-sm lg:text-base leading-relaxed text-white/70 max-w-2xl">
               Monitoring{" "}
-              <span className="text-white font-semibold">201 active cattle</span>{" "}
+              <span className="text-white font-semibold">{heroData?.total_cattle ?? data?.total_cattle ?? "—"} active cattle</span>{" "}
               while maintaining lifecycle records for{" "}
               <span className="text-orange-300 font-semibold">
-                404 total registered cattle
+                {heroData?.all_cattle_data ?? data?.all_cattle_data ?? "—"} total registered cattle
               </span>
               , including health tracking, breeding analytics, and milk production management.
             </p>
@@ -625,7 +636,7 @@ export function Dashboard() {
           <div className="p-4 space-y-3">
             {data?.top_10_fit_cattle.map((cow, i) => (
               <div
-                key={cow.id ?? i}
+                key={cow.tag_number ?? i}
                 onClick={() => setSelectedCow(cow)}
                 className="
             group
