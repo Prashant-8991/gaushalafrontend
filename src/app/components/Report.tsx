@@ -147,7 +147,7 @@ export function Report() {
       .then((d: ReportData) => {
         setData(d);
         const defaults = d.columns.filter((c) =>
-          ["tag_number", "name", "gender", "animal_type", "gen", "age"].includes(c.name)
+          ["tag_number", "name", "gender", "animal_type", "gen", "age", "physical_score"].includes(c.name)
         );
         setSelectedCols(defaults);
         setAvailableCols(d.columns.filter((c) => !defaults.includes(c)));
