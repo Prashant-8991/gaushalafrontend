@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip, Brush } from "recharts";
-import { Activity, Droplet, Heart, Baby, Syringe, Scale, Milk, Maximize2, X, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Activity, Droplet, Heart, Baby, Syringe, Scale, Milk, Maximize2, X, Sparkles, SlidersHorizontal, Stethoscope, Pill } from "lucide-react";
 
 const START_YEAR = 2000;
 const END_YEAR = 2027;
@@ -45,6 +45,7 @@ interface LifecycleEvent {
 interface LactationPeriod { id: number; start: string; end: string; title: string; }
 interface MilkPoint { timestamp: number; yield: number; }
 interface WeightPoint { timestamp: number; weight: number; }
+interface TreatmentEvent { id: number; date: string; disease: string | null; treatments: { name: string; quantities: string }[]; }
 
 function Stat({ icon: Icon, value, label, color, bg, darkBorder }: any) {
   return (
@@ -66,8 +67,9 @@ function LabelBlock({ title, subtitle, color, bg, height }: any) {
   );
 }
 
-function TimelineView({ events, lactations, milkData, weightData, tagName }: { events: LifecycleEvent[]; lactations: LactationPeriod[]; milkData: MilkPoint[]; weightData: WeightPoint[]; tagName: string }) {
+function TimelineView({ events, lactations, milkData, weightData, treatmentEvents, tagName }: { events: LifecycleEvent[]; lactations: LactationPeriod[]; milkData: MilkPoint[]; weightData: WeightPoint[]; treatmentEvents: TreatmentEvent[]; tagName: string }) {
   const [yearRange, setYearRange] = useState<[number, number]>([START_YEAR, END_YEAR]);
+  const [selectedTreatment, setSelectedTreatment] = useState<TreatmentEvent | null>(null);
   const visibleStart = useMemo(() => new Date(`${yearRange[0]}-01-01`).getTime(), [yearRange]);
   const visibleEnd = useMemo(() => new Date(`${yearRange[1]}-12-31`).getTime(), [yearRange]);
   const years = Array.from({ length: END_YEAR - START_YEAR + 1 }, (_, i) => START_YEAR + i);
@@ -91,6 +93,11 @@ function TimelineView({ events, lactations, milkData, weightData, tagName }: { e
     const e = new Date(l.end).getTime();
     return e >= visibleStart && s <= visibleEnd;
   }), [lactations, visibleStart, visibleEnd]);
+
+  const filteredTreatments = useMemo(() => treatmentEvents.filter(t => {
+    const ts = new Date(t.date).getTime();
+    return ts >= visibleStart && ts <= visibleEnd;
+  }), [treatmentEvents, visibleStart, visibleEnd]);
 
   const calvingIntervals = useMemo(() => {
     const calvings = [...filteredEvents].filter(e => e.type === 'Calving').sort((a,b)=> new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -259,6 +266,17 @@ function TimelineView({ events, lactations, milkData, weightData, tagName }: { e
                     </div>
                   );
                 })}
+                {filteredTreatments.map((t) => (
+                  <div key={`treat-${t.id}`} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer group z-30" style={{ left: `${getPercent(t.date, visibleStart, visibleEnd)}%` }} onClick={() => setSelectedTreatment(t)}>
+                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-500 border-2 border-white shadow-lg flex items-center justify-center text-white hover:bg-red-600 hover:scale-110 transition-all">
+                      <Stethoscope className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    </div>
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white px-2 py-1 rounded-md shadow-lg border border-red-200 hidden group-hover:flex flex-col items-center whitespace-nowrap">
+                      <span className="text-[10px] font-bold text-red-600">{t.disease || "Treatment"}</span>
+                      <span className="text-[9px] text-muted-foreground">{new Date(t.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="h-64 border-b border-saffron/10 z-10">
@@ -302,6 +320,36 @@ function TimelineView({ events, lactations, milkData, weightData, tagName }: { e
           </div>
         </div>
       </div>
+      {selectedTreatment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTreatment(null)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-hidden shadow-2xl border border-saffron/20 animate-in fade-in zoom-in" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-red-500 to-red-600 p-4 flex items-center justify-between text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center"><Stethoscope className="w-5 h-5" /></div>
+                <div>
+                  <h3 className="font-bold">{selectedTreatment.disease || "Treatment"}</h3>
+                  <p className="text-xs text-white/80">{new Date(selectedTreatment.date).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })} • {tagName}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedTreatment(null)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 overflow-auto max-h-[60vh]">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2"><Pill className="w-4 h-4 text-saffron" /> Treatments ({selectedTreatment.treatments.length})</h4>
+              <div className="space-y-2">
+                {selectedTreatment.treatments.map((tr: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-saffron/10">
+                    <span className="text-sm font-medium flex-1 pr-3">{tr.name}</span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-saffron/10 text-saffron border border-saffron/20 whitespace-nowrap">{tr.quantities}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 bg-muted/20 border-t flex justify-end">
+              <button onClick={() => setSelectedTreatment(null)} className="px-5 py-2 rounded-xl bg-saffron text-white text-sm font-semibold hover:bg-saffron-dark transition-colors">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -363,6 +411,7 @@ export function LifecycleShowcase({ tag }: { tag: string }) {
                   lactations={data.lactationPeriods || []}
                   milkData={data.milkData || []}
                   weightData={data.weightData || []}
+                  treatmentEvents={data.treatmentEvents || []}
                   tagName={data.name || tag}
                 />
               </div>
