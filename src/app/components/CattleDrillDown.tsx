@@ -6,6 +6,8 @@ import * as XLSX from "xlsx"
 import { toast } from "sonner"
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000"
+const CULL_PHRASE = "નિકાલ કરવી જોઇએ"
+function isDisposalSuggestion(s?: string | null) { return !!s && s.includes(CULL_PHRASE) }
 
 const ALLOWED_TAGS = ["SOM-006","SOM-015","SOM-020","SOM-023","SOM-025","SOM-038","SOM-040","SOM-041","SOM-055","SOM-061","SOM-068","SOM-085","SOM-087","SOM-089","SOM-091","SOM-103","SOM-115","SOM-119","SOM-125","SOM-136","SOM-220","SOM-060","SOM-112","SOM-150","SOM-159","SOM-161","SOM-162","SOM-169","SOM-179","SOM-203"]
 
@@ -60,14 +62,14 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
               const total = r.physical_total
               return (
                 <>
-                  <tr key={r.tag_number} className={`${idx%2===0?"bg-white":"bg-muted/20"} hover:bg-saffron/[0.04] transition-colors border-b border-saffron/[0.06]`}>
+                  <tr key={r.tag_number} className={`${isDisposalSuggestion((r as any).suggestion) ? "bg-red-50" : (idx%2===0?"bg-white":"bg-muted/20")} hover:bg-saffron/[0.04] transition-colors border-b border-saffron/[0.06]`}>
                     <td className="px-4 py-3.5">
-                      <button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity text-left" title={`View ${r.name || r.tag_number} profile`}>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-saffron/15 to-saffron/5 border border-saffron/20 flex items-center justify-center shrink-0"><span className="text-xs font-bold text-saffron">{(r.name||"?").charAt(0).toUpperCase()}</span></div>
-                        <span className="font-medium text-foreground whitespace-nowrap hover:text-saffron hover:underline">{r.name||"—"}</span>
+                      <button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity text-left" title={isDisposalSuggestion((r as any).suggestion) ? `Suggested for disposal — ${r.name || r.tag_number}` : `View ${r.name || r.tag_number} profile`}>
+                        <div className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${isDisposalSuggestion((r as any).suggestion) ? "bg-red-600 border-red-300" : "bg-gradient-to-br from-saffron/15 to-saffron/5 border-saffron/20"}`}><span className={`text-xs font-bold ${isDisposalSuggestion((r as any).suggestion) ? "text-yellow-300" : "text-saffron"}`}>{(r.name||"?").charAt(0).toUpperCase()}</span></div>
+                        <span className={`font-medium whitespace-nowrap ${isDisposalSuggestion((r as any).suggestion) ? "bg-red-600 text-yellow-300 px-2 py-0.5 rounded-md font-bold" : "text-foreground hover:text-saffron hover:underline"}`}>{r.name||"—"}</span>
                       </button>
                     </td>
-                    <td className="px-4 py-3.5"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-navy/5 text-navy border border-navy/10 hover:bg-navy/10 hover:text-saffron transition-colors" title={`View ${r.tag_number} profile`}>{r.tag_number}</button></td>
+                    <td className="px-4 py-3.5"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-medium border transition-colors ${isDisposalSuggestion((r as any).suggestion) ? "bg-red-600 text-yellow-300 border-red-300 font-bold" : "bg-navy/5 text-navy border-navy/10 hover:bg-navy/10 hover:text-saffron"}`} title={`View ${r.tag_number} profile`}>{r.tag_number}</button></td>
                     <td className="px-4 py-3.5 text-center">{(r as any).is_present === 1 ? <span title="Present" className="inline-flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-green-600" /></span> : (r as any).is_present === 0 ? <span title="Not Present" className="inline-flex items-center justify-center"><XCircle className="w-5 h-5 text-red-500" /></span> : <span className="text-muted-foreground text-xs">—</span>}</td>
                     <td className="px-4 py-3.5"><span className={`inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-medium border ${r.gender?.toLowerCase()==="male"?"bg-blue-100 text-blue-700 border-blue-200":"bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender || "—"}</span></td>
                     <td className="px-4 py-3.5 whitespace-nowrap text-xs">{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : <span className="text-muted-foreground">—</span>}</td>

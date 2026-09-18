@@ -20,7 +20,11 @@ interface CattleItem {
   animal_type: string;
   is_milking: number | null;
   is_pregnant: number | null;
+  suggestion?: string | null;
 }
+
+const CULL_PHRASE = "નિકાલ કરવી જોઇએ";
+function isDisposalSuggestion(s?: string | null) { return !!s && s.includes(CULL_PHRASE); }
 
 /* ─── Filter option lists ─── */
 
@@ -636,17 +640,18 @@ export function AllCattle() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
               onClick={() => type === "milking" ? (setCalendarTag(c.tag_number), setCalendarName(c.name)) : handleSelect(c)}
-              className="group bg-white dark:bg-navy rounded-xl border border-saffron/10 p-4 text-left hover:shadow-lg hover:shadow-saffron/5 hover:border-saffron/30 hover:-translate-y-0.5 transition-all duration-200"
+              className={`group rounded-xl border p-4 text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${isDisposalSuggestion(c.suggestion) ? "bg-red-50 border-red-300 hover:shadow-red-100 hover:border-red-400" : "bg-white dark:bg-navy border-saffron/10 hover:shadow-saffron/5 hover:border-saffron/30"}`}
+              title={isDisposalSuggestion(c.suggestion) ? `Suggested for disposal — ${c.name}` : undefined}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${c.gender === "Male" ? "bg-gradient-to-br from-blue-500 to-blue-700" : "bg-gradient-to-br from-pink-500 to-pink-600"}`}>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 700 }} className="text-white">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${isDisposalSuggestion(c.suggestion) ? "bg-red-600 border-2 border-red-300" : c.gender === "Male" ? "bg-gradient-to-br from-blue-500 to-blue-700" : "bg-gradient-to-br from-pink-500 to-pink-600"}`}>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700 }} className={isDisposalSuggestion(c.suggestion) ? "text-yellow-300" : "text-white"}>
                     {c.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }} className="text-foreground truncate">{c.name}</p>
-                  <p style={{ fontSize: '0.65rem' }} className="text-saffron font-mono">{c.tag_number}</p>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }} className={`truncate ${isDisposalSuggestion(c.suggestion) ? "bg-red-600 text-yellow-300 px-2 py-0.5 rounded-md font-bold inline-block max-w-full" : "text-foreground"}`}>{c.name}</p>
+                  <p style={{ fontSize: '0.65rem' }} className={isDisposalSuggestion(c.suggestion) ? "text-red-700 font-mono font-bold mt-1" : "text-saffron font-mono"}>{c.tag_number}</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     <span className={`inline-block px-1.5 py-0.5 rounded text-[0.55rem] font-medium ${GENDER_BADGE[c.gender] ?? "bg-gray-100 text-gray-600"}`}>
                       {c.gender === "Male" ? "♂" : "♀"} {c.gender}

@@ -42,6 +42,8 @@ function getBreedScoreArray(bs: BreedScore) { return BREED_TRAITS.map(t => ({ tr
 function isParentObj(v: any): v is ParentInfo { return v && typeof v === "object" && "tag_number" in v; }
 function formatDate(d: string | null) { if (!d || d === "Not available") return "—"; const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 function avg(arr: number[]) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+const CULL_PHRASE = "નિકાલ કરવી જોઇએ";
+function isDisposalSuggestion(s?: string | null) { return !!s && s.includes(CULL_PHRASE); }
 
 export function CattleProfile() {
   const { tagNumber } = useParams<{ tagNumber: string }>();
@@ -340,9 +342,9 @@ export function CattleProfile() {
                                 const total = r.physical_total;
                                 return (
                                   <>
-                                    <tr key={r.tag_number} className="border-b hover:bg-muted/20 group">
-                                      <td className="px-3 py-2 font-medium"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="text-left hover:text-saffron hover:underline font-medium transition-colors" title={`View ${r.name || r.tag_number} profile`}>{r.name || "—"}</button></td>
-                                      <td className="px-3 py-2 font-mono text-xs"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className="font-mono hover:text-saffron hover:underline transition-colors" title={`View ${r.tag_number} profile`}>{r.tag_number}</button></td>
+                                    <tr key={r.tag_number} className={`border-b group ${isDisposalSuggestion(r.suggestion) ? "bg-red-50 hover:bg-red-100/70" : "hover:bg-muted/20"}`}>
+                                      <td className="px-3 py-2 font-medium"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className={`text-left font-medium transition-colors ${isDisposalSuggestion(r.suggestion) ? "bg-red-600 text-yellow-300 hover:text-yellow-200 px-2 py-0.5 rounded-md font-bold" : "hover:text-saffron hover:underline"}`} title={isDisposalSuggestion(r.suggestion) ? `Suggested for disposal — ${r.name || r.tag_number}` : `View ${r.name || r.tag_number} profile`}>{r.name || "—"}</button></td>
+                                      <td className="px-3 py-2 font-mono text-xs"><button onClick={() => navigate(`/cattle/${encodeURIComponent(r.tag_number)}`)} className={`font-mono transition-colors ${isDisposalSuggestion(r.suggestion) ? "bg-red-600 text-yellow-300 hover:text-yellow-200 px-2 py-0.5 rounded-md font-bold" : "hover:text-saffron hover:underline"}`} title={`View ${r.tag_number} profile`}>{r.tag_number}</button></td>
                                       <td className="px-3 py-2 text-center">{r.is_present === 1 ? <span title="Present" className="inline-flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-green-600" /></span> : r.is_present === 0 ? <span title="Not Present" className="inline-flex items-center justify-center"><XCircle className="w-4 h-4 text-red-500" /></span> : <span className="text-muted-foreground text-[0.65rem]">—</span>}</td>
                                       <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[0.65rem] border ${r.gender?.toLowerCase()==="male"?"bg-blue-100 text-blue-700 border-blue-200":"bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender || "—"}</span></td>
                                       <td className="px-3 py-2 text-xs">{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—"}</td>
