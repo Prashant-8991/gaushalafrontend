@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle, MessageSquare,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle, MessageSquare, Stethoscope, ClipboardList,
 } from "lucide-react";
 import { ResponsiveContainer, Tooltip, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { useAuth } from "../auth/AuthContext";
@@ -24,6 +24,7 @@ interface CattleCardOverview {
   siblings: SiblingInfo[]; is_present: number | null; lactation_cycle: string | null; last_calving_date: string | null;
   mother: ParentInfo | string | null; father: ParentInfo | string | null; childrens: SiblingInfo[];
   breed_score: BreedScore | null; weight: string | null; age: string | null; average_milk_per_day: number | null; milk_remarks: string | null;
+  suggestion: string | null; final_observation: string | null;
 }
 interface CattleCardResponse {
   overview: CattleCardOverview | null; milk_by_month: MilkRecord[]; milk_by_day_only_for_month: MilkRecord[];
@@ -65,6 +66,10 @@ export function CattleProfile() {
   const totalScore = breedScores.length ? avg(breedScores.map(s => s.score)) : 0;
   const isMilking = ov?.average_milk_per_day != null && ov.average_milk_per_day > 0;
   const pregnancyLogs = apiData?.pregnancy_logs || [];
+  // Marked for disposal / culling by the veterinary suggestion
+  const isCullSuggested = !!ov?.suggestion && ov.suggestion.includes("નિકાલ કરવી જોઇએ");
+  // ૦-૧ (zero success) is the most severe grade
+  const isSevereCull = isCullSuggested && ov!.suggestion!.includes("૦-૧");
 
   useEffect(() => { if (!tag) { setLoading(false); return; }
     let c = false; setLoading(true);
@@ -113,7 +118,24 @@ export function CattleProfile() {
       <div className="bg-white rounded-2xl border border-saffron/10 overflow-hidden shadow-sm">
         <div className="bg-gradient-to-br from-saffron/5 to-navy/5 p-6">
           <div className="flex items-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-saffron/20 to-navy/20 flex items-center justify-center text-4xl font-bold text-saffron border-4 border-saffron/30 shrink-0">{(ov?.name || "?").charAt(0).toUpperCase()}</div>
+            {isCullSuggested ? (
+              <div className="relative shrink-0">
+                <div
+                  className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold border-4 shadow-lg bg-red-600 text-yellow-300 ${isSevereCull ? "border-red-300 ring-4 ring-red-400/60 ring-offset-2" : "border-red-300"}`}
+                  title={isSevereCull ? "Suggested for disposal (૦-૧)" : "Suggested for disposal"}
+                >
+                  {(ov?.name || "?").charAt(0).toUpperCase()}
+                </div>
+                {isSevereCull && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-red-600 border-2 border-white" />
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-saffron/20 to-navy/20 flex items-center justify-center text-4xl font-bold text-saffron border-4 border-saffron/30 shrink-0">{(ov?.name || "?").charAt(0).toUpperCase()}</div>
+            )}
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-2xl font-bold">{ov?.name || tag}</h2>
@@ -127,6 +149,49 @@ export function CattleProfile() {
             )}
           </div>
         </div>
+
+        {/* ATTENTION — Suggestion / Final Observation (blinking highlight, only shown when data exists) */}
+        {((ov?.suggestion && ov.suggestion.trim() !== "") || (ov?.final_observation && ov.final_observation.trim() !== "")) && (
+          <div className="px-6 pt-5">
+            <style>{`
+              @keyframes attentionBlink {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); border-color: rgba(239,68,68,0.75); background-color: rgba(254,242,242,0.95); }
+                50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); border-color: rgba(245,158,11,0.9); background-color: rgba(255,251,235,0.95); }
+              }
+              .attention-blink { animation: attentionBlink 1.5s ease-in-out infinite; }
+              @media print { .attention-blink { animation: none; } }
+            `}</style>
+            <div className="attention-blink rounded-2xl border-2 p-4 md:p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+                </span>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-red-700 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4" /> Attention Required
+                </h3>
+              </div>
+              {ov?.suggestion && ov.suggestion.trim() !== "" && (
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 border border-red-200 flex items-center justify-center shrink-0"><Stethoscope className="w-4 h-4 text-red-700" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-red-700 mb-0.5">Suggestion</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{ov.suggestion}</p>
+                  </div>
+                </div>
+              )}
+              {ov?.final_observation && ov.final_observation.trim() !== "" && (
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0"><ClipboardList className="w-4 h-4 text-amber-700" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-amber-700 mb-0.5">Final Observation</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{ov.final_observation}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* All Sections — no tabs */}
         <div className="p-6 space-y-8">

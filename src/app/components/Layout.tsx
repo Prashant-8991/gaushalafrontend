@@ -20,6 +20,7 @@ import {
   Droplets,
   Table2,
   StickyNote,
+  Trophy,
 } from "lucide-react";
 import { Toaster } from "./ui/sonner";
 import { CardThemeProvider, useCardTheme } from "./CardThemeContext";
@@ -27,6 +28,7 @@ import { useAuth } from "../auth/AuthContext";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/best-cattle", icon: Trophy, label: "Best Cattle" },
   { to: "/genealogy", icon: GitBranch, label: "Genealogy" },
   // { to: "/timeline", icon: Clock, label: "Timeline" },
   { to: "/alerts", icon: Bell, label: "Alerts" },

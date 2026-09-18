@@ -15,6 +15,7 @@ import { RegisterCattle } from "./components/RegisterCattle";
 import { EditCattle } from "./components/EditCattle";
 import { Report } from "./components/Report";
 import { DailyOps } from "./components/DailyOps";
+import { BestCattle } from "./components/BestCattle";
 import { Login } from "./components/Login";
 import { PendingApproval } from "./components/PendingApproval";
 import { RequireAuth, RequireAdminOrManager, RequireAdmin } from "./components/RequireAuth";
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: "cattle/:tagNumber", Component: CattleProfile },
           { path: "cattle-drill-down", Component: CattleDrillDown },
           { path: "notes", Component: Notes },
+          { path: "best-cattle", Component: BestCattle },
           {
             Component: RequireAdminOrManager,
             children: [

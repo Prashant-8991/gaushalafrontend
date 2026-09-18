@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Droplets, Loader2, AlertTriangle, Calendar, BarChart3, Maximize2, X } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
+import { AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
 
 const base = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const MONTHS = [
@@ -13,6 +13,7 @@ const MONTHS = [
 type DailyPoint = { date: string; day: number; milk: number | null };
 type MonthlyPoint = { month: string; month_num: number; month_name: string; milk: number | null };
 type YearlyPoint = { year: string; milk: number };
+type ForecastPoint = { date: string; value: number };
 
 export function MilkingData({ tag }: { tag: string }) {
   const currentYear = new Date().getFullYear();
@@ -26,6 +27,9 @@ export function MilkingData({ tag }: { tag: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [forecast, setForecast] = useState<ForecastPoint[] | null>(null);
+  const [fitted, setFitted] = useState<ForecastPoint[] | null>(null);
+  const [metrics, setMetrics] = useState<{ mae?: number; rmse?: number } | null>(null);
 
   const years = Array.from({ length: 12 }, (_, i) => currentYear - 10 + i).filter(y => y <= currentYear + 1);
 
@@ -56,9 +60,92 @@ export function MilkingData({ tag }: { tag: string }) {
     return () => { cancelled = true; };
   }, [tag, view, year, month]);
 
+  useEffect(() => {
+    if (!tag) return;
+    let cancelled = false;
+    const steps = view === "daily" ? 7 : view === "monthly" ? 6 : 3;
+    let url = `${base}/cattle/${encodeURIComponent(tag)}/milk/forecast?granularity=${view}&steps=${steps}`;
+    if (view === "daily") url += `&year=${year}&month=${month}`;
+    else if (view === "monthly") url += `&year=${year}`;
+    fetch(url)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (cancelled) return;
+        setForecast(d?.forecast || []);
+        setFitted(d?.fitted || []);
+        setMetrics(d?.metrics || null);
+      })
+      .catch(() => { if (!cancelled) { setForecast(null); setFitted(null); } });
+    return () => { cancelled = true; };
+  }, [tag, view, year, month]);
+
   const hasDailyData = daily && daily.records.some(r => r.milk != null);
   const hasMonthlyData = monthly && monthly.records.some(r => r.milk != null);
   const hasYearlyData = yearly && yearly.records.length > 0;
+
+  const dailyChartData = useMemo(() => {
+    if (!daily) return [] as any[];
+    const fittedMap = new Map<string, number>();
+    if (fitted) fitted.forEach(f => fittedMap.set(f.date, f.value));
+    const hist = daily.records.map(r => ({
+      day: r.day,
+      date: r.date,
+      milk: r.milk,
+      fitted: fittedMap.get(r.date) ?? null,
+      forecast: null as number | null,
+    }));
+    if (!forecast || forecast.length === 0) return hist;
+    const lastDay = Math.max(...hist.map(r => r.day));
+    const fc = forecast.map((f, i) => ({ day: lastDay + i + 1, date: f.date, milk: null as number | null, fitted: null as number | null, forecast: f.value }));
+    if (hist.length > 0 && fc.length > 0) {
+      const last = hist[hist.length - 1];
+      if (last.milk != null) fc.unshift({ day: last.day, date: last.date, milk: null, fitted: null, forecast: last.milk } as any);
+    }
+    return [...hist, ...fc];
+  }, [daily, fitted, forecast]);
+
+  const monthlyChartData = useMemo(() => {
+    if (!monthly) return [] as any[];
+    const fittedMap = new Map<string, number>();
+    if (fitted) fitted.forEach(f => fittedMap.set(f.date, f.value));
+    const hist = monthly.records.map(r => ({
+      name: r.month_name,
+      full: r.month,
+      milk: r.milk,
+      fitted: fittedMap.get(r.month) ?? null,
+      forecast: null as number | null,
+    }));
+    if (!forecast || forecast.length === 0) return hist;
+    const fc = forecast.map(f => {
+      const [y, m] = f.date.split("-");
+      const mn = MONTHS[parseInt(m, 10) - 1]?.label?.substring(0, 3) || m;
+      return { name: `${mn} ${y.slice(2)}`, full: f.date, milk: null as number | null, fitted: null as number | null, forecast: f.value };
+    });
+    if (hist.length > 0 && fc.length > 0) {
+      const last = hist[hist.length - 1];
+      if (last.milk != null) fc.unshift({ name: last.name, full: last.full, milk: null, fitted: null, forecast: last.milk } as any);
+    }
+    return [...hist, ...fc];
+  }, [monthly, fitted, forecast]);
+
+  const yearlyChartData = useMemo(() => {
+    if (!yearly) return [] as any[];
+    const fittedMap = new Map<string, number>();
+    if (fitted) fitted.forEach(f => fittedMap.set(f.date, f.value));
+    const hist = yearly.records.map(r => ({
+      year: r.year,
+      milk: r.milk,
+      fitted: fittedMap.get(r.year) ?? null,
+      forecast: null as number | null,
+    }));
+    if (!forecast || forecast.length === 0) return hist;
+    const fc = forecast.map(f => ({ year: f.date, milk: null as number | null, fitted: null as number | null, forecast: f.value }));
+    if (hist.length > 0 && fc.length > 0) {
+      const last = hist[hist.length - 1];
+      if (last.milk != null) fc.unshift({ year: last.year, milk: null, fitted: null, forecast: last.milk } as any);
+    }
+    return [...hist, ...fc];
+  }, [yearly, fitted, forecast]);
 
   return (
     <div className="space-y-4">
@@ -81,6 +168,29 @@ export function MilkingData({ tag }: { tag: string }) {
         </div>
       </div>
 
+      {metrics && (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg bg-purple-50 border border-purple-200 p-2 text-center">
+            <p className="text-[0.6rem] text-purple-700 uppercase font-semibold">Forecast 6M</p>
+            <p className="text-xs font-bold text-purple-700">{forecast && forecast.length > 0 ? `${forecast[0].value} → ${forecast[forecast.length - 1].value} L` : "—"}</p>
+          </div>
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-2 text-center">
+            <p className="text-[0.6rem] text-amber-700 uppercase font-semibold">Avg Diff (Actual vs Fitted)</p>
+            <p className="text-xs font-bold text-amber-700">{metrics?.mae != null ? `${metrics.mae} L` : "—"}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-2 text-center">
+            <p className="text-[0.6rem] text-slate-600 uppercase font-semibold">Fitted RMSE</p>
+            <p className="text-xs font-bold text-slate-700">{metrics?.rmse != null ? `${metrics.rmse}` : "—"}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 text-[0.65rem] px-2">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#FF9933] inline-block" /> Actual</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500 inline-block" /> Fitted (prev) dotted</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 border-t-2 border-dashed border-purple-500 inline-block" /> Forecast 6M dotted</span>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 text-saffron animate-spin" /><span className="ml-2 text-sm text-muted-foreground">Loading milking data...</span></div>
       ) : error ? (
@@ -93,14 +203,16 @@ export function MilkingData({ tag }: { tag: string }) {
             <div className="bg-muted/30 rounded-xl p-4 border border-saffron/10">
               <p className="text-xs text-muted-foreground mb-2">Daily — {MONTHS.find(m => m.value === month)?.label} {year} {daily?.average != null && <span>· Avg: <span className="text-saffron font-semibold">{daily.average} L</span></span>} {daily?.total != null && <span>· Total: <span className="font-semibold">{daily.total} L</span></span>}</p>
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={daily!.records} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={dailyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs><linearGradient id="milkDailyG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.4} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} interval={0} label={{ value: "Day", position: "insideBottom", offset: -2, fontSize: 10, fill: "#64748b" }} />
                   <YAxis tick={{ fontSize: 10 }} axisLine={false} label={{ value: "Milk (L)", angle: -90, position: "insideLeft", fontSize: 10, fill: "#64748b" }} />
-                  <Tooltip formatter={(v: any) => v == null ? "No data" : `${v} L`} labelFormatter={(l: any) => `Day ${l} — ${year}-${String(month).padStart(2, "0")}-${String(l).padStart(2, "0")}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Tooltip formatter={(v: any, name: any) => v == null ? "No data" : `${v} L${name === "forecast" ? " (forecast)" : name === "fitted" ? " (fitted)" : ""}`} labelFormatter={(l: any) => `Day ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                   {daily?.average != null && <ReferenceLine y={daily.average} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${daily.average}L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 10 }} />}
                   <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={2} fill="url(#milkDailyG)" dot={{ r: 2, fill: "#FF9933" }} activeDot={{ r: 5 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fitted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="8 4" dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} connectNulls={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -118,14 +230,16 @@ export function MilkingData({ tag }: { tag: string }) {
             <div className="bg-muted/30 rounded-xl p-4 border border-saffron/10">
               <p className="text-xs text-muted-foreground mb-2">Monthly — {year} {monthly?.average != null && <span>· Avg: <span className="text-saffron font-semibold">{monthly.average} L</span></span>} {monthly?.total != null && <span>· Total: <span className="font-semibold">{monthly.total} L</span></span>}</p>
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={monthly!.records.map(r => ({ name: r.month_name, full: r.month, milk: r.milk }))} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={monthlyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs><linearGradient id="milkMonthlyG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.4} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} />
                   <YAxis tick={{ fontSize: 10 }} axisLine={false} />
-                  <Tooltip formatter={(v: any) => v == null ? "No data" : `${v} L`} labelFormatter={(l: any) => `${l} ${year}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Tooltip formatter={(v: any, name: any) => v == null ? "No data" : `${v} L${name === "forecast" ? " (forecast)" : name === "fitted" ? " (fitted)" : ""}`} labelFormatter={(l: any) => `${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                   {monthly?.average != null && <ReferenceLine y={monthly.average} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${monthly.average}L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 10 }} />}
                   <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={2} fill="url(#milkMonthlyG)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 5 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fitted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="8 4" dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} connectNulls={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -143,14 +257,16 @@ export function MilkingData({ tag }: { tag: string }) {
             <div className="bg-muted/30 rounded-xl p-4 border border-saffron/10">
               <p className="text-xs text-muted-foreground mb-2">Yearly — All years {yearly?.average != null && <span>· Avg: <span className="text-saffron font-semibold">{yearly.average} L</span></span>} {yearly?.total != null && <span>· Total: <span className="font-semibold">{yearly.total} L</span></span>}</p>
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={yearly!.records} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={yearlyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs><linearGradient id="milkYearlyG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.4} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="year" tick={{ fontSize: 10 }} axisLine={false} />
                   <YAxis tick={{ fontSize: 10 }} axisLine={false} />
-                  <Tooltip formatter={(v: any) => `${v} L`} labelFormatter={(l: any) => `Year ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Tooltip formatter={(v: any, name: any) => `${v} L${name === "forecast" ? " (forecast)" : name === "fitted" ? " (fitted)" : ""}`} labelFormatter={(l: any) => `Year ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                   {yearly?.average != null && <ReferenceLine y={yearly.average} stroke="#1B3A6B" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Avg ${yearly.average}L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 10 }} />}
-                  <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={2} fill="url(#milkYearlyG)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 5 }} />
+                  <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={2} fill="url(#milkYearlyG)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 5 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fitted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="8 4" dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} connectNulls={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -191,38 +307,44 @@ export function MilkingData({ tag }: { tag: string }) {
               <div className="flex-1 flex flex-col items-center justify-center text-white"><AlertTriangle className="w-8 h-8 text-red-400 mb-2" /><p>{error}</p></div>
             ) : view === "daily" && hasDailyData ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={daily!.records} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                <AreaChart data={dailyChartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                   <defs><linearGradient id="fsDaily" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.5} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="day" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} label={{ value: "Day", position: "insideBottom", offset: -10, fill: "rgba(255,255,255,0.5)", fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff" }} labelStyle={{ color: "#fff" }} formatter={(v: any) => v == null ? "No data" : `${v} L`} labelFormatter={(l: any) => `Day ${l} — ${year}-${String(month).padStart(2, "0")}-${String(l).padStart(2, "0")}`} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff" }} labelStyle={{ color: "#fff" }} formatter={(v: any, name: any) => v == null ? "No data" : `${v} L${name === "forecast" ? " (forecast)" : name === "fitted" ? " (fitted)" : ""}`} labelFormatter={(l: any) => `Day ${l}`} />
                   {daily?.average != null && <ReferenceLine y={daily.average} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Avg ${daily.average}L`, position: "insideTopRight", fill: "#FF9933", fontSize: 13 }} />}
                   <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={3} fill="url(#fsDaily)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fitted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#8b5cf6" strokeWidth={3} strokeDasharray="8 4" dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 6 }} connectNulls={false} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : view === "monthly" && hasMonthlyData ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthly!.records.map(r => ({ name: r.month_name, milk: r.milk }))} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                <AreaChart data={monthlyChartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                   <defs><linearGradient id="fsMonthly" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.5} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="name" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
                   <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff" }} labelStyle={{ color: "#fff" }} formatter={(v: any) => v == null ? "No data" : `${v} L`} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff" }} labelStyle={{ color: "#fff" }} formatter={(v: any, name: any) => v == null ? "No data" : `${v} L${name === "forecast" ? " (forecast)" : name === "fitted" ? " (fitted)" : ""}`} />
                   {monthly?.average != null && <ReferenceLine y={monthly.average} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Avg ${monthly.average}L`, position: "insideTopRight", fill: "#FF9933", fontSize: 13 }} />}
                   <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={3} fill="url(#fsMonthly)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fitted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#8b5cf6" strokeWidth={3} strokeDasharray="8 4" dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 6 }} connectNulls={false} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : view === "yearly" && hasYearlyData ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={yearly!.records} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                <AreaChart data={yearlyChartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                   <defs><linearGradient id="fsYearly" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9933" stopOpacity={0.5} /><stop offset="95%" stopColor="#FF9933" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="year" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
                   <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff" }} labelStyle={{ color: "#fff" }} formatter={(v: any) => `${v} L`} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff" }} labelStyle={{ color: "#fff" }} formatter={(v: any, name: any) => `${v} L${name === "forecast" ? " (forecast)" : name === "fitted" ? " (fitted)" : ""}`} />
                   {yearly?.average != null && <ReferenceLine y={yearly.average} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Avg ${yearly.average}L`, position: "insideTopRight", fill: "#FF9933", fontSize: 13 }} />}
-                  <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={3} fill="url(#fsYearly)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="milk" stroke="#FF9933" strokeWidth={3} fill="url(#fsYearly)" dot={{ r: 3, fill: "#FF9933" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fitted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#8b5cf6" strokeWidth={3} strokeDasharray="8 4" dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 6 }} connectNulls={false} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -231,6 +353,8 @@ export function MilkingData({ tag }: { tag: string }) {
           </div>
           <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
             <div className="flex items-center gap-2"><div className="w-4 h-1 rounded bg-[#FF9933]" /><span className="text-white/70 text-sm">Milk Production</span></div>
+            <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded bg-amber-500" style={{ borderTop: "2px dashed #f59e0b" }} /><span className="text-white/70 text-sm">Fitted (prev)</span></div>
+            <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded bg-purple-500" style={{ borderTop: "2px dashed #8b5cf6" }} /><span className="text-white/70 text-sm">Forecast 6M</span></div>
             {((view === "daily" && daily?.average != null) || (view === "monthly" && monthly?.average != null) || (view === "yearly" && yearly?.average != null)) && (
               <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded bg-[#1B3A6B] border border-dashed border-white/30" /><span className="text-white/70 text-sm">Average</span></div>
             )}
