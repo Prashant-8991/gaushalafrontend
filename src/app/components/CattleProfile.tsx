@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft, Printer, Droplets, Calendar, GitBranch, Heart, Baby, Shield,
-  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle, MessageSquare, Stethoscope, ClipboardList,
+  AlertTriangle, Users, Loader2, Flower2, Scale, ChevronRight, ArrowDownRight, Circle, ArrowRight, X, Pencil, CheckCircle2, XCircle, MessageSquare, Stethoscope, ClipboardList, HandHeart, ArrowDownToLine, ArrowUpFromLine, Phone,
 } from "lucide-react";
 import { ResponsiveContainer, Tooltip, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { useAuth } from "../auth/AuthContext";
@@ -11,6 +11,7 @@ import { WeightChart, WeightTimelineData } from "./WeightChart";
 import { LifecycleShowcase } from "./LifecycleTimeline";
 import { MilkingData } from "./MilkingData";
 import { motion, AnimatePresence } from "motion/react";
+import { deriveAnimalTypeByDob } from "../utils/animalType";
 
 interface SiblingInfo { name: string | null; tag_number: string | null; generation: number | null; }
 interface ParentInfo { name: string | null; tag_number: string | null; generation: number | null; }
@@ -24,7 +25,7 @@ interface CattleCardOverview {
   siblings: SiblingInfo[]; is_present: number | null; lactation_cycle: string | null; last_calving_date: string | null;
   mother: ParentInfo | string | null; father: ParentInfo | string | null; childrens: SiblingInfo[];
   breed_score: BreedScore | null; weight: string | null; age: string | null; average_milk_per_day: number | null; milk_remarks: string | null;
-  suggestion: string | null; final_observation: string | null;
+  suggestion: string | null; final_observation: string | null; gender: string | null; animal_type: string | null;
 }
 interface CattleCardResponse {
   overview: CattleCardOverview | null; milk_by_month: MilkRecord[]; milk_by_day_only_for_month: MilkRecord[];
@@ -56,6 +57,7 @@ export function CattleProfile() {
   const [timelineData, setTimelineData] = useState<ReproductionTimelineData | null>(null);
   const [weightData, setWeightData] = useState<WeightTimelineData | null>(null);
   const [drillData, setDrillData] = useState<any>(null);
+  const [donations, setDonations] = useState<{ donated_in: any[]; donated_out: any[] } | null>(null);
   const [drillLoading, setDrillLoading] = useState(false);
   const [drillGender, setDrillGender] = useState<"Male" | "Female" | null>(null);
   const [drillExpanded, setDrillExpanded] = useState<string | null>(null);
@@ -64,6 +66,10 @@ export function CattleProfile() {
 
   const ov = apiData?.overview;
   const bs = ov?.breed_score;
+  const derivedGender = ov?.gender ?? drillData?.cattle?.gender ?? null;
+  const derivedAnimalType = ov?.animal_type ?? drillData?.cattle?.animal_type ?? null;
+  const derivedDob = (ov?.DOB && ov.DOB !== "Not available") ? ov.DOB : (drillData?.cattle?.date_of_birth ?? null);
+  const ageType = deriveAnimalTypeByDob(derivedAnimalType, derivedGender, derivedDob);
   const breedScores = bs ? getBreedScoreArray(bs) : [];
   const totalScore = breedScores.length ? avg(breedScores.map(s => s.score)) : 0;
   const isMilking = ov?.average_milk_per_day != null && ov.average_milk_per_day > 0;
@@ -94,6 +100,18 @@ export function CattleProfile() {
       .catch(() => setDrillData(null))
       .finally(() => setDrillLoading(false));
   }, [tag]);
+
+  useEffect(() => {
+    if (!tag) return;
+    setDonations(null);
+    fetch(`${base}/cattle/${encodeURIComponent(tag)}/donations`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setDonations(d))
+      .catch(() => setDonations(null));
+  }, [tag]);
+
+  const donatedInRecords: any[] = donations?.donated_in || [];
+  const donatedOutRecords: any[] = donations?.donated_out || [];
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-10 h-10 text-saffron animate-spin" /><span className="ml-3 text-muted-foreground">Loading...</span></div>;
   if (fetchError) return (
@@ -206,8 +224,76 @@ export function CattleProfile() {
               <Field label="Lactation" value={ov?.lactation_cycle || "—"} /><Field label="Last Calving" value={formatDate(ov?.last_calving_date ?? null)} />
               {isMilking && ov?.average_milk_per_day != null && <Field label="Avg Milk/Day" value={`${ov.average_milk_per_day} L`} />}
               <Field label="Children" value={String(ov?.total_childrens ?? 0)} /><Field label="Siblings" value={String(ov?.siblings?.length ?? 0)} />
+              <Field label="Age Type" value={ageType} highlight />
             </div>
           </Section>
+
+          {/* DONATION HISTORY — in (where it came from) / out (where it went) */}
+          {(donatedInRecords.length > 0 || donatedOutRecords.length > 0 || ov?.is_present === 0) && (
+            <Section icon={<HandHeart className="w-4 h-4" />} title="Donation History">
+              <div className="space-y-4">
+                {ov?.is_present === 0 && (
+                  <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-700">This cattle is <b>not present</b> in the gaushala. See its donation records below.</p>
+                  </div>
+                )}
+
+                {/* Donated In — where it came from */}
+                {donatedInRecords.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <ArrowDownToLine className="w-3.5 h-3.5" /> Donated In — from where it came
+                    </p>
+                    <div className="space-y-2">
+                      {donatedInRecords.map((r: any, i: number) => (
+                        <div key={`in-${i}`} className="rounded-xl border border-green-200 bg-green-50/50 p-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-green-100 border border-green-200 flex items-center justify-center shrink-0"><ArrowDownToLine className="w-4 h-4 text-green-700" /></div>
+                            <div>
+                              <p className="text-[0.55rem] uppercase tracking-wider text-muted-foreground">From</p>
+                              <p className="text-sm font-semibold text-green-800">{r.from_donated_in || "—"}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(r.donated_date)}</span>
+                          {r.gender && <span className={`px-2 py-0.5 rounded-full text-[0.65rem] border ${r.gender?.toLowerCase() === "male" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Donated Out — where it went */}
+                {donatedOutRecords.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <ArrowUpFromLine className="w-3.5 h-3.5" /> Donated Out — where it went
+                    </p>
+                    <div className="space-y-2">
+                      {donatedOutRecords.map((r: any, i: number) => (
+                        <div key={`out-${i}`} className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0"><ArrowUpFromLine className="w-4 h-4 text-amber-700" /></div>
+                            <div>
+                              <p className="text-[0.55rem] uppercase tracking-wider text-muted-foreground">To</p>
+                              <p className="text-sm font-semibold text-amber-800">{r.donated_to || "—"}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(r.donated_date)}</span>
+                          {r.mobile_number && <span className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {r.mobile_number}</span>}
+                          {r.gender && <span className={`px-2 py-0.5 rounded-full text-[0.65rem] border ${r.gender?.toLowerCase() === "male" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-pink-100 text-pink-700 border-pink-200"}`}>{r.gender}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {donatedInRecords.length === 0 && donatedOutRecords.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-xl">No donation records found for this cattle.</p>
+                )}
+              </div>
+            </Section>
+          )}
 
           {/* MILKING DATA — Single Graph with Daily / Monthly / Yearly */}
           <Section icon={<Droplets className="w-4 h-4" />} title="Milking Data">
@@ -465,6 +551,6 @@ export function CattleProfile() {
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return <div><h3 className="flex items-center gap-1.5 text-xs font-semibold text-saffron uppercase tracking-widest mb-3">{icon}{title}</h3>{children}</div>;
 }
-function Field({ label, value }: { label: string; value: string }) {
-  return <div className="bg-muted/20 rounded-lg p-2.5"><p className="text-[0.55rem] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p><p className="text-sm font-medium">{value}</p></div>;
+function Field({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return <div className={`rounded-lg p-2.5 ${highlight ? "bg-saffron/10 border border-saffron/30" : "bg-muted/20"}`}><p className="text-[0.55rem] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p><p className={`text-sm font-medium ${highlight ? "text-saffron" : ""}`}>{value}</p></div>;
 }

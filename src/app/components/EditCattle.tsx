@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle, AlertTriangle, Flower2, GitBranch, Heart, Droplets, Shield, ImagePlus, Trash2, ChevronDown, Plus, Calendar, Baby, ChevronLeft, ChevronRight, Pencil, X, Check, Loader2 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { deriveAnimalTypeByDob } from "../utils/animalType";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const ACQ = ["BIRTH", "DONATION", "PURCHASED", "બહારથી આવેલ"];
@@ -323,6 +324,7 @@ export function EditCattle() {
           <IRow label="Gender" field="gender" val={f.gender} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("gender", f.gender)} onSave={() => saveEdit("gender")} onCancel={() => setEditing(null)} options={["Female", "Male"]} />
           <IRow label="Date of Birth" field="date_of_birth" val={f.date_of_birth ? fmtd(f.date_of_birth) : "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("date_of_birth", f.date_of_birth)} onSave={() => saveEdit("date_of_birth")} onCancel={() => setEditing(null)} type="date" />
           <IRow label="Animal Type" field="animal_type" val={f.animal_type || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("animal_type", f.animal_type)} onSave={() => saveEdit("animal_type")} onCancel={() => setEditing(null)} options={["આજીવન મા બની શકશે નહી", "BULL", "FEMALE CALF", "OX", "COW", "MALE CALF"]} />
+          <IRow label="Age Type" field="age_type" title="Animal type based on date of birth" val={deriveAnimalTypeByDob(f.animal_type, f.gender, f.date_of_birth)} readOnly />
           <IRow label="Acquisition" field="acquisition_type" val={f.acquisition_type || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("acquisition_type", f.acquisition_type)} onSave={() => saveEdit("acquisition_type")} onCancel={() => setEditing(null)} />
           <IRow label="Weight at Birth" field="weight_at_birth" val={f.weight_at_birth ? `${f.weight_at_birth} kg` : "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("weight_at_birth", f.weight_at_birth)} onSave={() => saveEdit("weight_at_birth")} onCancel={() => setEditing(null)} type="number" />
           <IRow label="Brucellosis" field="brucellosis_status" val={f.brucellosis_status || "—"} editing={editing} editVal={editVal} setEditVal={setEditVal} onEdit={() => startEdit("brucellosis_status", f.brucellosis_status)} onSave={() => saveEdit("brucellosis_status")} onCancel={() => setEditing(null)} />
@@ -485,10 +487,10 @@ function ParentSearch({ label, placeholder, search, setSearch, results, open, se
   </div>;
 }
 
-function IRow({ label, field, val, editing, editVal, setEditVal, onEdit, onSave, onCancel, type = "text", options }: any) {
-  const isEditing = editing === field;
+function IRow({ label, field, val, editing, editVal, setEditVal, onEdit, onSave, onCancel, type = "text", options, readOnly = false, title }: any) {
+  const isEditing = !readOnly && editing === field;
   return (
-    <div className="flex items-center py-2 border-b border-saffron/5 last:border-0 group">
+    <div className="flex items-center py-2 border-b border-saffron/5 last:border-0 group" title={title}>
       <span className="text-[0.6rem] text-muted-foreground uppercase w-28 shrink-0">{label}</span>
       {isEditing ? (
         <div className="flex items-center gap-1 flex-1">
@@ -504,9 +506,9 @@ function IRow({ label, field, val, editing, editVal, setEditVal, onEdit, onSave,
           <button onClick={onCancel} className="p-1 rounded hover:bg-red-50 text-red-400"><X className="w-3.5 h-3.5" /></button>
         </div>
       ) : (
-        <div onClick={onEdit} className="flex-1 text-sm font-medium cursor-pointer hover:bg-saffron/5 rounded px-2 py-1 transition-colors flex items-center gap-2">
+        <div onClick={readOnly ? undefined : onEdit} className={`flex-1 text-sm font-medium rounded px-2 py-1 transition-colors flex items-center gap-2 ${readOnly ? "cursor-default text-navy" : "cursor-pointer hover:bg-saffron/5"}`}>
           <span>{val || <span className="text-muted-foreground/30 italic">—</span>}</span>
-          <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          {!readOnly && <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
         </div>
       )}
     </div>
