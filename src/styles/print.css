@@ -1,0 +1,51 @@
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Allow all scrollable containers to expand so every section prints */
+  [class*="overflow-y-auto"],
+  [class*="overflow-hidden"],
+  [class*="overflow-x-auto"] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Keep table rows from splitting across pages. Section cards are allowed to
+     flow across pages so tall tables are never clipped. */
+  tr,
+  thead {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-avoid-break > div:first-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Drop decorative shadows and blur */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Full-width tables so nothing is clipped on paper */
+  table {
+    width: 100% !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+}

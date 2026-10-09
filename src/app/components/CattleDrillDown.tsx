@@ -114,7 +114,7 @@ function SingleTable({ records, expandedTag, setExpandedTag }: { records: Detail
 function SectionCard({ title, icon, records, subtitle }: { title:string; icon:React.ReactNode; records:DetailRecord[]; subtitle?:string }) {
   const [expanded, setExpanded] = useState<string|null>(null)
   return (
-    <div className="bg-white rounded-2xl border border-saffron/10 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-saffron/10 shadow-sm overflow-hidden print-avoid-break">
       <div className="bg-gradient-to-r from-saffron/5 via-white to-navy/5 px-6 py-5 border-b border-saffron/10 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-saffron to-saffron-dark flex items-center justify-center text-white shadow-md">{icon}</div>
@@ -240,10 +240,10 @@ export function CattleDrillDown() {
     <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div><h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><span className="w-9 h-9 rounded-xl bg-gradient-to-br from-saffron to-saffron-dark flex items-center justify-center text-white shadow-md"><Heart className="w-5 h-5"/></span>Cattle Maternal & Physical Records</h1><p className="text-sm text-muted-foreground mt-1">Select a cattle to view its lineage — mother, sisters, maternal aunts and children (all cattle with present/not-present status)</p></div>
-        <button onClick={handleExport} disabled={loading||!data} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-semibold shadow-md hover:from-emerald-700 hover:to-emerald-600 disabled:opacity-50 shrink-0"><FileSpreadsheet className="w-4 h-4"/>Export Excel<Download className="w-4 h-4 opacity-80"/></button>
+        <button onClick={handleExport} disabled={loading||!data} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-semibold shadow-md hover:from-emerald-700 hover:to-emerald-600 disabled:opacity-50 shrink-0 print:hidden"><FileSpreadsheet className="w-4 h-4"/>Export Excel<Download className="w-4 h-4 opacity-80"/></button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-saffron/10 p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      <div className="bg-white rounded-2xl border border-saffron/10 p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center print:hidden">
         <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground shrink-0">Select Cattle</label>
         <div className="relative w-full sm:w-80">
           <div className="relative">
@@ -282,7 +282,7 @@ export function CattleDrillDown() {
       </div>
 
       {/* ── Bull Filter ── */}
-      <div className="bg-white rounded-2xl border border-saffron/10 p-4 space-y-4">
+      <div className="bg-white rounded-2xl border border-saffron/10 p-4 space-y-4 print:hidden">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-navy to-navy-dark flex items-center justify-center text-white shadow-sm"><GitBranch className="w-4 h-4"/></div>
           <div>
@@ -379,7 +379,7 @@ export function CattleDrillDown() {
       </div>
 
       {/* Gender Filter */}
-      <div className="bg-white rounded-2xl border border-saffron/10 p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-white rounded-2xl border border-saffron/10 p-4 flex flex-wrap items-center gap-3 print:hidden">
         <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground flex items-center gap-1.5">Gender</span>
         <button onClick={()=> setGenderFilter(genderFilter==="Male"?null:"Male")} className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-all ${genderFilter==="Male"?"bg-blue-500 text-white border-blue-500 shadow":"bg-white text-muted-foreground border-saffron/20 hover:border-blue-300"}`}>♂ Male</button>
         <button onClick={()=> setGenderFilter(genderFilter==="Female"?null:"Female")} className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-all ${genderFilter==="Female"?"bg-pink-500 text-white border-pink-500 shadow":"bg-white text-muted-foreground border-saffron/20 hover:border-pink-300"}`}>♀ Female</button>

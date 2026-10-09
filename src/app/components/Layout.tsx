@@ -85,7 +85,7 @@ function LayoutInner() {
 
   return (
     <div
-      className="flex h-screen overflow-hidden"
+      className="flex h-screen overflow-hidden print:block print:h-auto print:overflow-visible"
       style={{ fontFamily: "'Poppins', sans-serif" }}
     >
       {sidebarOpen && (
@@ -100,7 +100,7 @@ function LayoutInner() {
           sidebarOpen
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0"
-        } flex flex-col shadow-2xl shadow-black/20`}
+        } flex flex-col shadow-2xl shadow-black/20 print:hidden`}
       >
         <div className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-saffron/5 blur-3xl" />
@@ -247,8 +247,8 @@ function LayoutInner() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-background/80 backdrop-blur-md border-b border-border px-4 lg:px-6 py-3 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      <div className="flex-1 flex flex-col overflow-hidden print:block print:overflow-visible">
+        <header className="bg-background/80 backdrop-blur-md border-b border-border px-4 lg:px-6 py-3 flex items-center justify-between shrink-0 sticky top-0 z-30 print:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden p-2 rounded-xl hover:bg-muted transition-colors"
@@ -309,7 +309,7 @@ function LayoutInner() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-background">
+        <main className="flex-1 overflow-y-auto bg-background print:overflow-visible print:h-auto">
           <Outlet />
         </main>
       </div>
