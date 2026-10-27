@@ -99,6 +99,7 @@ export function AllCattle() {
   const [milkingFilter, setMilkingFilter] = useState<boolean | null>(null);
   const [pregnantFilter, setPregnantFilter] = useState<boolean | null>(null);
   const [presentFilter, setPresentFilter] = useState<number | null>(null);
+  const [attentionFilter, setAttentionFilter] = useState(false);
 
   /* Bull filter state */
   const [bullOptions, setBullOptions] = useState<{ tag_number: string; name: string | null }[]>([]);
@@ -115,7 +116,7 @@ export function AllCattle() {
 
   useEffect(() => {
     setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]);
-    setMilkingFilter(null); setPregnantFilter(null);
+    setMilkingFilter(null); setPregnantFilter(null); setAttentionFilter(false);
     setSearch(""); setSelectedCow(null);
   }, [config.api, presentFilter]);
 
@@ -201,11 +202,12 @@ export function AllCattle() {
       const excludeMaleForMilking = milkingFilter !== null ? onlyFemale : true;
       const excludeMaleForPregnant = pregnantFilter !== null ? onlyFemale : true;
       const matchBull = bullMode === null ? true : bullMode === "bull" ? bullChildren.has(c.tag_number) : !bullChildren.has(c.tag_number);
-      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant && excludeMaleForMilking && excludeMaleForPregnant && matchBull;
+      const matchAttention = !attentionFilter || isDisposalSuggestion(c.suggestion);
+      return matchSearch && matchGender && matchAcq && matchAnimal && matchMilking && matchPregnant && excludeMaleForMilking && excludeMaleForPregnant && matchBull && matchAttention;
     });
-  }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter, bullMode, bullChildren]);
+  }, [cattleList, search, genderFilter, acqFilter, animalFilter, milkingFilter, pregnantFilter, bullMode, bullChildren, attentionFilter]);
 
-  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0) + (presentFilter !== null ? 1 : 0);
+  const activeFilterCount = genderFilter.length + acqFilter.length + animalFilter.length + (milkingFilter !== null ? 1 : 0) + (pregnantFilter !== null ? 1 : 0) + (bullMode !== null ? 1 : 0) + (presentFilter !== null ? 1 : 0) + (attentionFilter ? 1 : 0);
 
   /* ─── Speech ─── */
 
@@ -276,7 +278,7 @@ export function AllCattle() {
   const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
-  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); setPresentFilter(null); };
+  const clearAll = () => { setGenderFilter([]); setAcqFilter([]); setAnimalFilter([]); setMilkingFilter(null); setPregnantFilter(null); setBullMode(null); setBullChildren(new Set()); setPresentFilter(null); setAttentionFilter(false); };
 
   /* ─── Render: loading / error ─── */
 
@@ -500,6 +502,21 @@ export function AllCattle() {
                 </div>
               </div>
 
+              {/* Attention */}
+              <div>
+                <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2">
+                  Attention
+                </p>
+                <button
+                  onClick={() => setAttentionFilter(v => !v)}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-[0.8rem] font-medium transition-all ${attentionFilter
+                    ? "bg-red-500 text-white border-red-500 shadow"
+                    : "bg-transparent text-muted-foreground border-saffron/20 hover:border-red-300"
+                    }`}>
+                  <AlertTriangle className="w-3.5 h-3.5" /> Attention Required
+                </button>
+              </div>
+
               {/* Bull Filter — Select Bull (tag + name below) */}
               <div>
                 <p style={{ fontSize: '0.65rem', fontWeight: 600 }} className="text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -611,6 +628,11 @@ export function AllCattle() {
           {presentFilter !== null && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium border ${presentFilter === 0 ? "bg-red-100 text-red-700 border-red-200" : "bg-green-100 text-green-700 border-green-200"}`}>
               {presentFilter === 0 ? "Not Present" : "Present"} <button onClick={() => setPresentFilter(null)}><X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {attentionFilter && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.65rem] font-medium bg-red-100 text-red-700 border border-red-200">
+              <AlertTriangle className="w-3 h-3" /> Attention Required <button onClick={() => setAttentionFilter(false)}><X className="w-3 h-3" /></button>
             </span>
           )}
           {bullMode !== null && (

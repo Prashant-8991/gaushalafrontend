@@ -3,8 +3,10 @@ import { AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router";
 import {
   Flower2, Droplets, Heart, AlertTriangle, TrendingUp, Users,
-  Activity, Scale, Baby, Milk, Shield, Maximize2, X,
+  Activity, Scale, Baby, Milk, Shield, Maximize2, X, FileSpreadsheet, Loader2,
+  ArrowUp, ArrowDown, CalendarDays,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine,
@@ -27,6 +29,13 @@ interface KPICardProps {
   value: string | number;
   subtitle?: string;
   gradient: string;
+}
+
+interface MilkDailyRow {
+  tag_number: string;
+  name: string;
+  date: string;
+  milk: number;
 }
 
 function KPICard({ icon, label, value, subtitle, gradient }: KPICardProps) {
@@ -129,11 +138,146 @@ export function Dashboard() {
 
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
   const [fsChart, setFsChart] = useState(false);
+  const [showMilkTable, setShowMilkTable] = useState(false);
+  const [milkTableMode, setMilkTableMode] = useState<"summary" | "daily">("daily");
+  const [sortKey, setSortKey] = useState<number | "total">("total");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const getMilkingCurrentMonth = async (): Promise<TopMilkerCurrentMonth[]> => {
+    const res = await fetch(`${API_BASE}/dashboard/milking-current-month`);
+    if (!res.ok) throw new Error("Failed to fetch current month milking data");
+    return res.json();
+  };
+
+  const {
+    data: milkingCurrentMonth,
+    isLoading: milkTableLoading,
+    error: milkTableError,
+  } = useQuery({
+    queryKey: ["milking-current-month"],
+    queryFn: getMilkingCurrentMonth,
+    enabled: fsChart && showMilkTable,
+  });
+
+  const getMilkDailyCurrentMonth = async (): Promise<MilkDailyRow[]> => {
+    const res = await fetch(`${API_BASE}/dashboard/milk-daily-current-month`);
+    if (!res.ok) throw new Error("Failed to fetch daily milk data");
+    return res.json();
+  };
+
+  const {
+    data: milkDaily,
+    isLoading: milkDailyLoading,
+    error: milkDailyError,
+  } = useQuery({
+    queryKey: ["milk-daily-current-month"],
+    queryFn: getMilkDailyCurrentMonth,
+    enabled: fsChart && showMilkTable,
+  });
+
+  const currentMonthLabel = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayColumns = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // Pivot daily rows into one row per cow: { tag, name, days: {1:4.5, ...}, total }
+  const dailyByCow: { tag_number: string; name: string; days: Record<number, number>; total: number }[] = [];
+  {
+    const index = new Map<string, number>();
+    (milkDaily || []).forEach(r => {
+      const day = parseInt(r.date.slice(8, 10), 10);
+      let i = index.get(r.tag_number);
+      if (i === undefined) {
+        i = dailyByCow.length;
+        index.set(r.tag_number, i);
+        dailyByCow.push({ tag_number: r.tag_number, name: r.name || "—", days: {}, total: 0 });
+      }
+      const entry = dailyByCow[i];
+      entry.days[day] = (entry.days[day] || 0) + r.milk;
+      entry.total += r.milk;
+    });
+  }
+
+  const todayDay = now.getDate();
+  // Days that have at least one milk record across all cows. Days with none are
+  // treated as "no data for this day" and rendered as "-".
+  const daysWithData = new Set<number>();
+  dailyByCow.forEach(cow => Object.keys(cow.days).forEach(k => daysWithData.add(Number(k))));
+  const dailySorted = [...dailyByCow].sort((a, b) => {
+    const va = sortKey === "total" ? a.total : (a.days[sortKey] ?? -1);
+    const vb = sortKey === "total" ? b.total : (b.days[sortKey] ?? -1);
+    return sortDir === "asc" ? va - vb : vb - va;
+  });
+  const visibleDayColumns = selectedDay != null ? [selectedDay] : dayColumns;
+
+  const handleDayClick = (d: number) => {
+    if (selectedDay === d) {
+      setSelectedDay(null);
+      setSortKey("total");
+    } else {
+      setSelectedDay(d);
+      setSortKey(d);
+    }
+  };
+
+  const exportMilkingXLSX = () => {
+    const wb = XLSX.utils.book_new();
+
+    if (milkTableMode === "daily") {
+      const header = ["Tag", "Name", ...visibleDayColumns.map(d => `Day ${d}`), "Total"];
+      const aoa = [
+        header,
+        ...dailySorted.map(cow => [
+          cow.tag_number,
+          cow.name,
+          ...visibleDayColumns.map(d => cow.days[d] ?? ""),
+          +cow.total.toFixed(1),
+        ]),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = [{ wch: 14 }, { wch: 24 }, ...visibleDayColumns.map(() => ({ wch: 6 })), { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Daily Milk");
+    } else {
+      const rows = (milkingCurrentMonth || []).map((r, i) => ({
+        "Sr No": i + 1,
+        "Tag Number": r.tag_number,
+        "Name": r.name,
+        "Gender": r.gender || "",
+        "Animal Type": r.animal_type || "",
+        "Total Milk (L)": r.total_milk,
+        "Avg Milk (L)": r.avg_milk ?? "",
+        "Days Logged": r.days_logged ?? "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 24 }, { wch: 10 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Summary");
+    }
+
+    const suffix = milkTableMode === "daily" ? "daily_milk" : "milking_summary";
+    XLSX.writeFile(wb, `${suffix}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const milkMonthly = data?.month_wise_milk_production || [];
   const milkAvg = milkMonthly.length
     ? +(milkMonthly.reduce((s: number, m: any) => s + (m.total_milk || 0), 0) / milkMonthly.length).toFixed(0)
     : null;
+
+  // Compact, readable X-axis labels (handles YYYY-MM and YYYY-MM-DD) and an
+  // adaptive interval so labels never overlap regardless of data volume.
+  const MILK_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const formatMilkMonth = (val: string | null) => {
+    if (!val) return "";
+    let m = /^(\d{4})-(\d{2})$/.exec(val);
+    if (m) return `${MILK_MONTHS[parseInt(m[2], 10) - 1]} '${m[1].slice(2)}`;
+    m = /^(\d{4})-(\d{2})-(\d{2})/.exec(val);
+    if (m) return `${parseInt(m[3], 10)} ${MILK_MONTHS[parseInt(m[2], 10) - 1]}`;
+    return val;
+  };
+  const tickIntervalFor = (count: number, target: number) =>
+    count <= target ? 0 : Math.ceil(count / target) - 1;
+  const milkTickInterval = tickIntervalFor(milkMonthly.length, 10);
+  const fsMilkTickInterval = tickIntervalFor(milkMonthly.length, 16);
 
   const topMilkers = cows
     .filter(c => c.dailyMilk > 0)
@@ -292,14 +436,18 @@ export function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="month"
-                tick={{ fontSize: 12, fill: "#64748b" }}
-                interval={0}
-                angle={-45}
+                tickFormatter={formatMilkMonth}
+                tick={{ fontSize: 11, fill: "#64748b" }}
+                interval={milkTickInterval}
+                minTickGap={24}
+                angle={-35}
                 textAnchor="end"
-                height={60}
+                height={70}
+                tickMargin={12}
+                padding={{ left: 12, right: 12 }}
                 axisLine={false}
                 tickLine={false}
-                dy={10}
+                dy={8}
               />
               <YAxis
                 tick={{ fontSize: 12, fill: "#64748b" }}
@@ -855,33 +1003,252 @@ export function Dashboard() {
       </AnimatePresence>
 
       {fsChart && (
-        <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col" onClick={() => setFsChart(false)}>
-          <div className="flex items-center justify-between px-6 py-4 shrink-0">
-            <h2 className="text-white text-lg font-bold">Herd Monthly Milk Production (Liters)</h2>
-            <button onClick={() => setFsChart(false)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5 text-white" /></button>
+        <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col" onClick={() => { setFsChart(false); setShowMilkTable(false); }}>
+          <div className="flex items-center justify-between px-6 py-4 shrink-0" onClick={e => e.stopPropagation()}>
+            <h2 className="text-white text-lg font-bold">
+              {showMilkTable ? `Current Month Milking Cattle — ${currentMonthLabel}` : "Herd Monthly Milk Production (Liters)"}
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowMilkTable(v => !v)}
+                title={showMilkTable ? "Show chart" : "Show current month milking data"}
+                className={`p-2 rounded-xl transition-colors ${showMilkTable ? "bg-emerald-500 hover:bg-emerald-600" : "bg-white/10 hover:bg-white/20"}`}
+              >
+                <FileSpreadsheet className="w-5 h-5 text-white" />
+              </button>
+              <button onClick={() => { setFsChart(false); setShowMilkTable(false); }} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"><X className="w-5 h-5 text-white" /></button>
+            </div>
           </div>
-          <div className="flex-1 p-6" onClick={e => e.stopPropagation()}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={milkMonthly} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
-                <defs>
-                  <linearGradient id="fsMilkG" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.5} />
-                    <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} angle={-45} axisLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", fontSize: "13px" }} labelStyle={{ color: "#fff" }} />
-                {milkAvg != null && <ReferenceLine y={milkAvg} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Average ${milkAvg} L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 13, fontWeight: "bold" }} />}
-                <Area type="monotone" dataKey="total_milk" stroke="#FF6B00" strokeWidth={3} fill="url(#fsMilkG)" dot={{ r: 3, fill: "#FF6B00" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
-              </AreaChart>
-            </ResponsiveContainer>
+
+          <div className="flex-1 p-6 overflow-hidden" onClick={e => e.stopPropagation()}>
+            {showMilkTable ? (
+              <div className="h-full flex flex-col">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
+                  <div>
+                    <h3 className="text-white font-semibold">
+                      {milkTableMode === "daily" ? "Daily Milk Data (every day)" : "Current Month Milking Cattle"}
+                    </h3>
+                    <p className="text-white/50 text-xs">
+                      {currentMonthLabel} • {milkTableMode === "daily"
+                        ? `${dailyByCow.length} cows × ${daysInMonth} days`
+                        : `${milkingCurrentMonth?.length ?? 0} cows with milk logs`}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex rounded-xl bg-white/10 p-1">
+                      <button
+                        onClick={() => setMilkTableMode("summary")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${milkTableMode === "summary" ? "bg-white text-gray-900" : "text-white/70 hover:text-white"}`}
+                      >Summary</button>
+                      <button
+                        onClick={() => setMilkTableMode("daily")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${milkTableMode === "daily" ? "bg-white text-gray-900" : "text-white/70 hover:text-white"}`}
+                      >Daily</button>
+                    </div>
+
+                    {milkTableMode === "daily" && (
+                      <>
+                        <div className="flex rounded-xl bg-white/10 p-1">
+                          <button
+                            onClick={() => setSortDir("asc")}
+                            title="Sort ascending"
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sortDir === "asc" ? "bg-white text-gray-900" : "text-white/70 hover:text-white"}`}
+                          ><ArrowUp className="w-3 h-3" /> Asc</button>
+                          <button
+                            onClick={() => setSortDir("desc")}
+                            title="Sort descending"
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sortDir === "desc" ? "bg-white text-gray-900" : "text-white/70 hover:text-white"}`}
+                          ><ArrowDown className="w-3 h-3" /> Desc</button>
+                        </div>
+
+                        {selectedDay != null && (
+                          <button
+                            onClick={() => { setSelectedDay(null); setSortKey("total"); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-saffron/20 text-saffron-light text-xs font-semibold hover:bg-saffron/30 transition-colors"
+                            title="Clear date filter"
+                          >
+                            <CalendarDays className="w-3.5 h-3.5" /> Day {selectedDay}
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    <button
+                      onClick={exportMilkingXLSX}
+                      disabled={milkTableMode === "daily"
+                        ? (milkDailyLoading || dailyByCow.length === 0)
+                        : (milkTableLoading || !milkingCurrentMonth || milkingCurrentMonth.length === 0)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" /> Export Excel
+                    </button>
+                  </div>
+                </div>
+
+                {milkTableMode === "summary" ? (
+                  milkTableLoading ? (
+                    <div className="flex-1 flex items-center justify-center gap-2 text-white/70">
+                      <Loader2 className="w-6 h-6 animate-spin" /> Loading milking data...
+                    </div>
+                  ) : milkTableError ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 text-red-300">
+                      <AlertTriangle className="w-8 h-8" />
+                      <p className="text-sm">Failed to load current month milking data</p>
+                    </div>
+                  ) : !milkingCurrentMonth || milkingCurrentMonth.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center text-white/60 text-sm">
+                      No milking records for {currentMonthLabel}
+                    </div>
+                  ) : (
+                    <div className="flex-1 overflow-auto rounded-xl border border-white/10">
+                      <table className="w-full text-sm text-white">
+                        <thead className="sticky top-0 z-10 bg-white/10 backdrop-blur">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/60">#</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/60">Tag</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/60">Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/60">Gender</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/60">Animal Type</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white/60">Total Milk (L)</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white/60">Avg Milk (L)</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white/60">Days Logged</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {milkingCurrentMonth.map((r, i) => (
+                            <tr key={r.tag_number ?? i} className="border-t border-white/[0.06] hover:bg-white/[0.04]">
+                              <td className="px-4 py-3 text-white/50">{i + 1}</td>
+                              <td className="px-4 py-3 font-mono text-saffron-light">{r.tag_number}</td>
+                              <td className="px-4 py-3 font-medium">{r.name || "—"}</td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[0.65rem] font-medium ${r.gender?.toLowerCase() === "male" ? "bg-blue-500/20 text-blue-200" : "bg-pink-500/20 text-pink-200"}`}>
+                                  {r.gender || "—"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-white/70">{r.animal_type || "—"}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-emerald-300">{r.total_milk}</td>
+                              <td className="px-4 py-3 text-right text-white/70">{r.avg_milk ?? "—"}</td>
+                              <td className="px-4 py-3 text-right text-white/70">{r.days_logged ?? "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : (
+                  milkDailyLoading ? (
+                    <div className="flex-1 flex items-center justify-center gap-2 text-white/70">
+                      <Loader2 className="w-6 h-6 animate-spin" /> Loading daily milk data...
+                    </div>
+                  ) : milkDailyError ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 text-red-300">
+                      <AlertTriangle className="w-8 h-8" />
+                      <p className="text-sm">Failed to load daily milk data</p>
+                    </div>
+                  ) : dailyByCow.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center text-white/60 text-sm">
+                      No daily milk records for {currentMonthLabel}
+                    </div>
+                  ) : (
+                    <div className="flex-1 overflow-auto rounded-xl border border-white/10">
+                      <table className={`w-full text-xs text-white border-collapse ${selectedDay == null ? "min-w-[1100px]" : ""}`}>
+                        <thead className="sticky top-0 z-10">
+                          <tr className="bg-gray-800">
+                            <th className="sticky left-0 z-20 bg-gray-800 px-3 py-2 text-left font-semibold uppercase tracking-wider text-white/60">Tag</th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-wider text-white/60 min-w-[140px]">Name</th>
+                            {visibleDayColumns.map(d => {
+                              const isToday = d === todayDay;
+                              const isSelected = selectedDay === d;
+                              return (
+                                <th key={d} className={`px-2 py-2 text-center font-semibold ${isToday
+                                  ? "text-saffron bg-saffron/15"
+                                  : isSelected
+                                    ? "text-emerald-200 bg-emerald-500/15"
+                                    : "text-white/60"}`}>
+                                  <button onClick={() => handleDayClick(d)} className="hover:underline" title={isToday ? "Today — click to filter/sort" : "Click to show this date only"}>
+                                    {d}{isToday && <span className="block text-[0.5rem] font-normal text-saffron-light">today</span>}
+                                  </button>
+                                </th>
+                              );
+                            })}
+                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-wider text-emerald-300 cursor-pointer" onClick={() => setSortKey("total")} title="Sort by total">
+                              Total {sortKey === "total" && (sortDir === "asc" ? "↑" : "↓")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dailySorted.map(cow => (
+                            <tr key={cow.tag_number} className="border-t border-white/[0.06] hover:bg-white/[0.04]">
+                              <td className="sticky left-0 z-10 bg-gray-900 px-3 py-2 font-mono text-saffron-light whitespace-nowrap">{cow.tag_number}</td>
+                              <td className="px-3 py-2 font-medium whitespace-nowrap max-w-[180px] truncate">{cow.name}</td>
+                              {visibleDayColumns.map(d => {
+                                const isFuture = d > todayDay;
+                                const isNull = cow.days[d] == null;
+                                if (isFuture) {
+                                  return <td key={d} className="px-2 py-2 text-center text-transparent select-none">&nbsp;</td>;
+                                }
+                                if (!daysWithData.has(d)) {
+                                  return <td key={d} className="px-2 py-2 text-center text-white/30">-</td>;
+                                }
+                                return (
+                                  <td key={d} className={`px-2 py-2 text-center ${isNull
+                                    ? "bg-red-500/20 text-red-300 font-semibold"
+                                    : d === todayDay
+                                      ? "bg-saffron/[0.07] text-white/80"
+                                      : "text-white/80"}`}>
+                                    {isNull ? 0 : cow.days[d]}
+                                  </td>
+                                );
+                              })}
+                              <td className="px-3 py-2 text-right font-semibold text-emerald-300">{+cow.total.toFixed(1)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={milkMonthly} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                  <defs>
+                    <linearGradient id="fsMilkG" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.5} />
+                      <stop offset="95%" stopColor="#FF6B00" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={formatMilkMonth}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }}
+                    interval={fsMilkTickInterval}
+                    minTickGap={28}
+                    angle={-35}
+                    textAnchor="end"
+                    height={70}
+                    tickMargin={12}
+                    padding={{ left: 16, right: 16 }}
+                    axisLine={false}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "rgba(255,255,255,0.7)" }} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", fontSize: "13px" }} labelStyle={{ color: "#fff" }} />
+                  {milkAvg != null && <ReferenceLine y={milkAvg} stroke="#1B3A6B" strokeDasharray="8 4" strokeWidth={2} label={{ value: `Average ${milkAvg} L`, position: "insideTopRight", fill: "#1B3A6B", fontSize: 13, fontWeight: "bold" }} />}
+                  <Area type="monotone" dataKey="total_milk" stroke="#FF6B00" strokeWidth={3} fill="url(#fsMilkG)" dot={{ r: 3, fill: "#FF6B00" }} activeDot={{ r: 6, stroke: "white", strokeWidth: 2 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
-            <div className="flex items-center gap-2"><div className="w-4 h-1 rounded" style={{ backgroundColor: "#FF6B00" }} /><span className="text-white/70 text-sm">Total Milk Per Month</span></div>
-            {milkAvg != null && <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded" style={{ backgroundColor: "#1B3A6B", border: "1px dashed #1B3A6B" }} /><span className="text-white/70 text-sm">Average ({milkAvg} L)</span></div>}
-          </div>
+
+          {!showMilkTable && (
+            <div className="flex items-center justify-center gap-4 px-6 py-4 bg-white/5 shrink-0">
+              <div className="flex items-center gap-2"><div className="w-4 h-1 rounded" style={{ backgroundColor: "#FF6B00" }} /><span className="text-white/70 text-sm">Total Milk Per Month</span></div>
+              {milkAvg != null && <div className="flex items-center gap-2"><div className="w-4 h-0.5 rounded" style={{ backgroundColor: "#1B3A6B", border: "1px dashed #1B3A6B" }} /><span className="text-white/70 text-sm">Average ({milkAvg} L)</span></div>}
+            </div>
+          )}
         </div>
       )}
     </div>

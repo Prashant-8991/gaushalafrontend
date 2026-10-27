@@ -15,6 +15,12 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// Attention Required = the cattle has a disposal suggestion.
+const CULL_PHRASE = "નિકાલ કરવી જોઇએ";
+function needsAttention(s?: string | null) {
+  return !!s && s.includes(CULL_PHRASE);
+}
+
 interface ColumnInfo {
   name: string;
   type: string;
@@ -145,12 +151,33 @@ export function Report() {
         return r.json();
       })
       .then((d: ReportData) => {
-        setData(d);
-        const defaults = d.columns.filter((c) =>
+        // Convert 0/1 flag columns (is_milking / is_present / is_pregnant ...) to Yes/No
+        // and add a computed "Attention" column derived from the suggestion field.
+        const isFlagCol = (n: string) => /^(new_)?is_/i.test(n);
+        const toYesNo = (v: any) => {
+          if (v === null || v === undefined) return v;
+          if (typeof v === "boolean") return v ? "Yes" : "No";
+          const s = String(v).trim().toLowerCase();
+          if (s === "1" || s === "true" || s === "yes") return "Yes";
+          if (s === "0" || s === "false" || s === "no") return "No";
+          return v;
+        };
+        const rows = d.rows.map((row) => {
+          const out: Record<string, any> = { ...row };
+          for (const c of d.columns) {
+            if (isFlagCol(c.name)) out[c.name] = toYesNo(out[c.name]);
+          }
+          const sug = out["suggestion"] ?? out["new_suggestion"];
+          out["attention"] = needsAttention(sug) ? "Yes" : "No";
+          return out;
+        });
+        const columns: ColumnInfo[] = [...d.columns, { name: "attention", type: "boolean" }];
+        setData({ columns, rows });
+        const defaults = columns.filter((c) =>
           ["tag_number", "name", "gender", "animal_type", "gen", "age", "physical_score"].includes(c.name)
         );
         setSelectedCols(defaults);
-        setAvailableCols(d.columns.filter((c) => !defaults.includes(c)));
+        setAvailableCols(columns.filter((c) => !defaults.includes(c)));
         setLoading(false);
       })
       .catch((e) => {
@@ -259,6 +286,18 @@ export function Report() {
             if (typeof v === "boolean") return v ? "Yes" : "No";
             return String(v);
           },
+          ...(col.name === "attention"
+            ? {
+                cell: (info: any) =>
+                  info.getValue() === "Yes" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[0.65rem] font-semibold">
+                      ▲ Yes
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">No</span>
+                  ),
+              }
+            : {}),
         })),
       [selectedCols]
     ),
