@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip, Brush } from "recharts";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Activity, Droplet, Heart, Baby, Syringe, Scale, Milk, Maximize2, X, Sparkles, SlidersHorizontal, Stethoscope, Pill } from "lucide-react";
 
 const START_YEAR = 2000;
@@ -67,13 +67,96 @@ function LabelBlock({ title, subtitle, color, bg, height }: any) {
   );
 }
 
-function TimelineView({ events, lactations, milkData, weightData, treatmentEvents, tagName }: { events: LifecycleEvent[]; lactations: LactationPeriod[]; milkData: MilkPoint[]; weightData: WeightPoint[]; treatmentEvents: TreatmentEvent[]; tagName: string }) {
-  const [yearRange, setYearRange] = useState<[number, number]>([START_YEAR, END_YEAR]);
+function TimelineView({ events, lactations, milkData, weightData, treatmentEvents, tagName, birthDate }: { events: LifecycleEvent[]; lactations: LactationPeriod[]; milkData: MilkPoint[]; weightData: WeightPoint[]; treatmentEvents: TreatmentEvent[]; tagName: string; birthDate?: string | null }) {
+  // Dynamic timeline: the axis starts at the cattle's birth date (not year 2000),
+  // so the birth marker is visible at the left edge without horizontal scrolling.
+  const earliestTs = useMemo(() => {
+    const ts: number[] = [];
+    const pushDate = (d?: string | null) => {
+      if (!d) return;
+      const t = new Date(d).getTime();
+      if (Number.isFinite(t)) ts.push(t);
+    };
+    events.forEach(e => pushDate(e.date));
+    treatmentEvents.forEach(t => pushDate(t.date));
+    lactations.forEach(l => pushDate(l.start));
+    milkData.forEach(m => { if (Number.isFinite(m.timestamp)) ts.push(m.timestamp); });
+    weightData.forEach(w => { if (Number.isFinite(w.timestamp)) ts.push(w.timestamp); });
+    return ts.length ? Math.min(...ts) : TIMELINE_START;
+  }, [events, treatmentEvents, lactations, milkData, weightData]);
+
+  const birthTs = useMemo(() => {
+    const t = birthDate ? new Date(birthDate).getTime() : NaN;
+    if (Number.isFinite(t)) return Math.min(t, earliestTs);
+    return earliestTs;
+  }, [birthDate, earliestTs]);
+  const startYear = useMemo(() => new Date(birthTs).getFullYear(), [birthTs]);
+  // Dynamic end: current year (extended only if the data itself runs later),
+  // so the filter reads "birth year → current year".
+  const dataEndYear = useMemo(() => {
+    const ys: number[] = [];
+    const pushYear = (d?: string | null) => {
+      if (!d) return;
+      const t = new Date(d).getTime();
+      if (Number.isFinite(t)) ys.push(new Date(t).getFullYear());
+    };
+    events.forEach(e => pushYear(e.date));
+    treatmentEvents.forEach(t => pushYear(t.date));
+    lactations.forEach(l => pushYear(l.end));
+    milkData.forEach(m => { if (Number.isFinite(m.timestamp)) ys.push(new Date(m.timestamp).getFullYear()); });
+    weightData.forEach(w => { if (Number.isFinite(w.timestamp)) ys.push(new Date(w.timestamp).getFullYear()); });
+    return ys.length ? Math.max(...ys) : new Date().getFullYear();
+  }, [events, treatmentEvents, lactations, milkData, weightData]);
+  const endYear = Math.max(new Date().getFullYear(), dataEndYear, startYear);
+
+  // From/To year picked by the user. To year left empty means "current year".
+  const currentYear = new Date().getFullYear();
+  const [fromYear, setFromYear] = useState(startYear);
+  const [toYearRaw, setToYearRaw] = useState<number | null>(null);
+  const toYear = toYearRaw ?? currentYear;
+  // Never let the range invert; the view always uses ordered bounds.
+  const effFrom = Math.min(fromYear, toYear);
+  const effTo = Math.max(fromYear, toYear);
+
+  // Stretch / pinch zoom applied to the whole timeline width, so every row
+  // (reproduction, milk yield, body weight, lactation) zooms together.
+  const zoomRef = useRef(1);
+  const [zoom, setZoom] = useState(1);
+  const pendingAnchor = useRef<{ ax: number; ratio: number } | null>(null);
+  const applyZoom = (next: number, anchorClientX?: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const clamped = Math.min(6, Math.max(1, next));
+    const prev = zoomRef.current;
+    if (clamped === prev) return;
+    const rect = el.getBoundingClientRect();
+    const ax = (anchorClientX ?? rect.left + rect.width / 2) - rect.left;
+    pendingAnchor.current = { ax, ratio: clamped / prev };
+    zoomRef.current = clamped;
+    setZoom(clamped);
+  };
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const p = pendingAnchor.current;
+    if (el && p) {
+      el.scrollLeft = (el.scrollLeft + p.ax) * p.ratio - p.ax;
+      pendingAnchor.current = null;
+    }
+  }, [zoom]);
+  useEffect(() => { setFromYear(startYear); setToYearRaw(null); setZoom(1); zoomRef.current = 1; }, [startYear]);
+
   const [selectedTreatment, setSelectedTreatment] = useState<TreatmentEvent | null>(null);
-  const visibleStart = useMemo(() => new Date(`${yearRange[0]}-01-01`).getTime(), [yearRange]);
-  const visibleEnd = useMemo(() => new Date(`${yearRange[1]}-12-31`).getTime(), [yearRange]);
-  const years = Array.from({ length: END_YEAR - START_YEAR + 1 }, (_, i) => START_YEAR + i);
-  const visibleYears = useMemo(() => years.filter(y => y >= yearRange[0] && y <= yearRange[1]), [yearRange]);
+  // Small lead-in before birth so the birth marker and its label are not clipped
+  // by the sticky "TIMELINE" column at the left edge.
+  const LEAD_IN_MS = 150 * 24 * 60 * 60 * 1000;
+  const visibleStart = useMemo(() => {
+    if (effFrom <= startYear) return birthTs - LEAD_IN_MS;
+    return new Date(`${effFrom}-01-01`).getTime();
+  }, [effFrom, birthTs, startYear]);
+  const visibleEnd = useMemo(() => new Date(`${effTo}-12-31`).getTime(), [effTo]);
+  const years = Array.from({ length: Math.max(1, endYear - startYear + 1) }, (_, i) => startYear + i);
+  // Years overlapping the actual visible window.
+  const visibleYears = useMemo(() => years.filter(y => y >= effFrom && y <= effTo), [years, effFrom, effTo]);
   const chartColors = {
     milk: { stroke: "#FF6B00", fill: "#FFF0E0" },
     weight: { stroke: "#1B3A6B", fill: "#E8EEF6" },
@@ -110,6 +193,81 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
 
   const getPercentVisible = (dateString: string) => getPercent(dateString, visibleStart, visibleEnd);
 
+  // True on-screen position (0–100%) for any timestamp in the current view.
+  const posPct = (ts: number) =>
+    Math.max(0.5, Math.min(99.5, ((ts - visibleStart) / Math.max(1, visibleEnd - visibleStart)) * 100));
+
+  // When zoomed into roughly a year or less, label months instead of years.
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const spanDays = (visibleEnd - visibleStart) / 86400000;
+  const showMonthTicks = spanDays <= 400;
+  const monthTicks = useMemo(() => {
+    if (!showMonthTicks) return [] as { ts: number; label: string }[];
+    const out: { ts: number; label: string }[] = [];
+    const cur = new Date(visibleStart);
+    cur.setDate(1);
+    let guard = 0;
+    while (cur.getTime() <= visibleEnd && guard++ < 60) {
+      out.push({ ts: cur.getTime(), label: `${MON[cur.getMonth()]} '${String(cur.getFullYear()).slice(2)}` });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return out;
+  }, [showMonthTicks, visibleStart, visibleEnd]);
+
+  // Always open the horizontal scroller at the far left so the birth marker
+  // sits at the start edge (the black-square position), then scroll right
+  // to reveal later events.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ left: 0 });
+  }, [visibleStart, tagName]);
+
+  // Two-finger stretch on touch + Ctrl+scroll on desktop zoom the timeline,
+  // keeping the point under the fingers/cursor anchored.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let pinch: { d: number; z: number } | null = null;
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) pinch = { d: dist(e.touches), z: zoomRef.current };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const d = dist(e.touches);
+      if (d <= 0 || pinch.d <= 0) return;
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      applyZoom(pinch.z * (d / pinch.d), cx);
+    };
+    const onTouchEnd = (e: TouchEvent) => { if (e.touches.length < 2) pinch = null; };
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      applyZoom(zoomRef.current * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX);
+    };
+    const onGesture = (e: Event) => e.preventDefault();
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("gesturestart", onGesture as EventListener);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("gesturestart", onGesture as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const birthLabel = birthDate
+    ? new Date(birthDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    : null;
+
   return (
     <div>
       <div className="w-full mx-auto bg-white border border-saffron/15 rounded-xl shadow-lg font-sans overflow-hidden my-4 md:my-6">
@@ -118,7 +276,7 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
             <div className="p-3 bg-white rounded-lg border border-saffron/20 shadow-sm"><Activity className="w-8 h-8 text-saffron" /></div>
             <div>
               <h1 className="text-xl md:text-3xl font-bold text-navy tracking-tight">{tagName}</h1>
-              <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mt-1">Historical Array <span className="text-saffron ml-1">{yearRange[0]} – {yearRange[1]}</span></div>
+              <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mt-1">From birth{birthLabel ? ` ${birthLabel}` : ""} <span className="text-saffron ml-1">{effFrom} – {effTo}</span></div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 md:gap-6">
@@ -130,75 +288,61 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
           </div>
         </div>
 
-        {/* BRUSH / YEAR SLIDER BAR - Light theme with Saffron/Golden */}
+        {/* YEAR RANGE FILTER - Light theme with Saffron/Golden */}
         <div className="px-4 md:px-6 py-4 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-b border-saffron/15 flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-saffron" />
-              <span className="text-xs font-bold uppercase tracking-wider text-navy">Brush — Select Year Range</span>
-              <span className="px-2.5 py-1 rounded-full bg-saffron text-white text-xs font-bold">{yearRange[0]} — {yearRange[1]}</span>
-              <span className="text-[11px] text-muted-foreground hidden md:inline">Slide to filter timeline, milk & weight</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-navy">Year Range</span>
+              <span className="px-2.5 py-1 rounded-full bg-saffron text-white text-xs font-bold">{effFrom} — {effTo}</span>
             </div>
-            <button onClick={() => setYearRange([START_YEAR, END_YEAR])} className="px-3 py-1.5 rounded-lg bg-white border border-saffron/20 text-xs font-semibold hover:bg-saffron/5 transition-colors">Reset to All Years</button>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-4">
-            <span className="text-xs font-mono font-bold text-navy w-10 text-center">{START_YEAR}</span>
-            <div className="flex-1 flex items-center gap-2">
-              <div className="flex-1 flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">From</label>
-                <input type="range" min={START_YEAR} max={END_YEAR} value={yearRange[0]} onChange={e => {
-                  const v = Math.min(Number(e.target.value), yearRange[1] - 1);
-                  setYearRange([v, yearRange[1]]);
-                }} className="w-full h-2 bg-saffron/10 rounded-lg appearance-none cursor-pointer accent-saffron" />
-                <span className="text-xs font-bold text-center text-saffron">{yearRange[0]}</span>
-              </div>
-              <div className="w-px h-12 bg-saffron/20 hidden md:block" />
-              <div className="flex-1 flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">To</label>
-                <input type="range" min={START_YEAR} max={END_YEAR} value={yearRange[1]} onChange={e => {
-                  const v = Math.max(Number(e.target.value), yearRange[0] + 1);
-                  setYearRange([yearRange[0], v]);
-                }} className="w-full h-2 bg-saffron/10 rounded-lg appearance-none cursor-pointer accent-saffron" />
-                <span className="text-xs font-bold text-center text-saffron">{yearRange[1]}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">From</label>
+              <select
+                value={fromYear}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  setFromYear(v);
+                  if (toYear < v) setToYearRaw(v);
+                }}
+                className="px-3 py-2 rounded-xl bg-white border border-saffron/20 text-sm font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-saffron/30"
+              >
+                {years.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
             </div>
-            <span className="text-xs font-mono font-bold text-navy w-10 text-center">{END_YEAR}</span>
-          </div>
-
-          <div className="relative h-12 bg-white rounded-lg border border-saffron/15 overflow-hidden px-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={milkData.length ? milkData : Array.from({length: END_YEAR-START_YEAR+1}, (_,i)=>({timestamp: new Date(`${START_YEAR+i}-06-01`).getTime(), yield: 0}))} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                <XAxis dataKey="timestamp" type="number" domain={[TIMELINE_START, TIMELINE_END]} hide />
-                <Area type="monotone" dataKey="yield" stroke="#FF6B00" fill="#FFF0E0" fillOpacity={0.6} isAnimationActive={false} />
-                <Brush
-                  dataKey="timestamp"
-                  height={28}
-                  stroke="#FF6B00"
-                  fill="#FFF7ED"
-                  travellerWidth={14}
-                  gap={1}
-                  onChange={(domain: any) => {
-                    if (domain && domain.length === 2 && milkData.length) {
-                      const startIdx = domain[0];
-                      const endIdx = domain[1];
-                      const sorted = [...milkData].sort((a,b)=>a.timestamp-b.timestamp);
-                      if (sorted[startIdx] && sorted[endIdx]) {
-                        const sYear = new Date(sorted[startIdx].timestamp).getFullYear();
-                        const eYear = new Date(sorted[endIdx].timestamp).getFullYear();
-                        if (sYear < eYear) setYearRange([sYear, eYear]);
-                      }
-                    }
-                  }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-            <span className="absolute left-2 top-1 text-[10px] font-bold text-saffron pointer-events-none">BRUSH — drag handles to slide</span>
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">To</label>
+              <select
+                value={toYearRaw ?? ""}
+                onChange={e => {
+                  const raw = e.target.value;
+                  if (raw === "") { setToYearRaw(null); return; }
+                  const v = Number(raw);
+                  if (v < fromYear) setFromYear(v);
+                  setToYearRaw(v);
+                }}
+                className="px-3 py-2 rounded-xl bg-white border border-saffron/20 text-sm font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-saffron/30"
+              >
+                <option value="">Auto (current year {currentYear})</option>
+                {years.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <span className="text-[11px] text-muted-foreground hidden md:inline">Leave To empty for current year &bull; stretch with two fingers or Ctrl+scroll to zoom</span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => { const r = scrollRef.current?.getBoundingClientRect(); applyZoom(zoomRef.current / 1.3, r ? r.left + r.width / 2 : undefined); }} className="w-8 h-8 rounded-xl bg-white border border-saffron/20 text-base font-bold text-navy hover:bg-saffron/5 transition-colors" title="Zoom out">&minus;</button>
+              <span className="text-xs font-bold text-navy w-11 text-center">{Math.round(zoom * 100)}%</span>
+              <button onClick={() => { const r = scrollRef.current?.getBoundingClientRect(); applyZoom(zoomRef.current * 1.3, r ? r.left + r.width / 2 : undefined); }} className="w-8 h-8 rounded-xl bg-white border border-saffron/20 text-base font-bold text-navy hover:bg-saffron/5 transition-colors" title="Zoom in">+</button>
+            </div>
+            <button onClick={() => { setFromYear(startYear); setToYearRaw(null); setZoom(1); zoomRef.current = 1; }} className="px-3 py-1.5 rounded-lg bg-white border border-saffron/20 text-xs font-semibold hover:bg-saffron/5 transition-colors">Reset</button>
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto custom-scrollbar bg-orange-50/20">
-          <div className="flex min-w-[3600px] relative bg-white transition-colors duration-300">
+        <div ref={scrollRef} className="w-full overflow-x-auto custom-scrollbar bg-orange-50/20">
+          <div className="flex relative bg-white transition-colors duration-300" style={{ minWidth: `${Math.max(1200, (endYear - startYear + 1) * 170) * zoom}px` }}>
             <div className="w-32 md:w-48 shrink-0 flex flex-col border-r border-saffron/10 z-40 sticky left-0 bg-white/95 backdrop-blur-md shadow-[4px_0_12px_-4px_rgba(0,0,0,0.08)]">
               <div className="h-12 border-b border-saffron/10 flex items-center justify-center font-bold text-navy/60 text-xs md:text-sm">TIMELINE</div>
               <LabelBlock title="REPRODUCTION" subtitle={`${filteredEvents.filter(e=>e.type==="Conception").length} Cycles`} color="text-saffron" bg="bg-orange-50/60" height="h-72" />
@@ -209,14 +353,22 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
 
             <div className="flex-1 relative flex flex-col">
               <div className="absolute inset-0 flex pointer-events-none z-0">
-                {visibleYears.map((year, i) => (
-                  <div key={year} className="h-full border-l border-dashed border-saffron/10" style={{ position: 'absolute', left: `${(i / Math.max(1, visibleYears.length - 1)) * 100}%` }} />
-                ))}
+                {showMonthTicks
+                  ? monthTicks.map(m => (
+                    <div key={m.ts} className="h-full border-l border-dashed border-saffron/10" style={{ position: 'absolute', left: `${posPct(m.ts)}%` }} />
+                  ))
+                  : visibleYears.map(year => (
+                    <div key={year} className="h-full border-l border-dashed border-saffron/10" style={{ position: 'absolute', left: `${posPct(new Date(`${year}-06-15`).getTime())}%` }} />
+                  ))}
               </div>
               <div className="h-12 relative border-b border-saffron/10 z-10 bg-white/80 backdrop-blur-sm">
-                {visibleYears.map((year, i) => (
-                  <div key={year} className="absolute bottom-2 -translate-x-1/2 font-bold text-navy text-sm md:text-base px-2 rounded-md" style={{ left: `${(i / Math.max(1, visibleYears.length - 1)) * 100}%` }}>{year}</div>
-                ))}
+                {showMonthTicks
+                  ? monthTicks.map(m => (
+                    <div key={m.ts} className="absolute bottom-2 -translate-x-1/2 font-bold text-navy text-[10px] md:text-xs px-1 rounded-md whitespace-nowrap" style={{ left: `${posPct(m.ts)}%` }}>{m.label}</div>
+                  ))
+                  : visibleYears.map(year => (
+                    <div key={year} className="absolute bottom-2 -translate-x-1/2 font-bold text-navy text-sm md:text-base px-2 rounded-md" style={{ left: `${posPct(new Date(`${year}-06-15`).getTime())}%` }}>{year}</div>
+                  ))}
               </div>
 
               <div className="h-72 relative border-b border-saffron/10 z-10">
@@ -256,7 +408,7 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
                   if (event.position === 'far-above') yOffset = 'bottom-full mb-14';
                   return (
                     <div key={event.id} className="absolute top-1/2 flex flex-col items-center -translate-x-1/2 -translate-y-1/2" style={{ left: `${getPercent(event.date, visibleStart, visibleEnd)}%` }}>
-                      <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full ${event.color.replace('dark:', '').split(' ')[0]} border-2 border-white shadow-md z-20 relative flex items-center justify-center text-white`}>
+                      <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full ${event.color.replace('dark:', '').split(' ')[0]} border-2 border-white shadow-md z-20 relative flex items-center justify-center text-white ${event.type === "Birth" ? "ring-4 ring-saffron/60" : ""}`}>
                         <IconComponent className="w-3 h-3 md:w-4 md:h-4" />
                         <div className={`absolute flex flex-col items-center w-24 left-1/2 -translate-x-1/2 bg-white backdrop-blur-md p-1.5 rounded-md shadow-sm border border-saffron/10 ${yOffset}`}>
                           <span className="text-[10px] md:text-xs font-bold text-navy uppercase leading-none">{event.type}</span>
@@ -284,8 +436,7 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
                   <AreaChart data={filteredMilk} margin={{ top: 20, right: 0, left: 0, bottom: 24 }}>
                     <XAxis dataKey="timestamp" type="number" domain={[visibleStart, visibleEnd]} hide />
                     <Tooltip labelFormatter={(val:any) => new Date(val).toLocaleDateString()} formatter={(val:any) => [`${Number(val).toFixed(1)} L`, 'Yield']} contentStyle={{ borderRadius: '8px', border: '1px solid #FFE0B2', backgroundColor: '#ffffff' }} />
-                    <Area type="monotone" dataKey="yield" stroke="#FF6B00" strokeWidth={2} fill="#FFF0E0" fillOpacity={1} />
-                    <Brush dataKey="timestamp" height={24} stroke="#FF6B00" fill="#FFF7ED" travellerWidth={10} />
+                  <Area type="monotone" dataKey="yield" stroke="#FF6B00" strokeWidth={2} fill="#FFF0E0" fillOpacity={1} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -295,8 +446,7 @@ function TimelineView({ events, lactations, milkData, weightData, treatmentEvent
                   <AreaChart data={filteredWeight} margin={{ top: 20, right: 0, left: 0, bottom: 24 }}>
                     <XAxis dataKey="timestamp" type="number" domain={[visibleStart, visibleEnd]} hide />
                     <Tooltip labelFormatter={(val:any) => new Date(val).toLocaleDateString()} formatter={(val:any) => [`${Number(val).toFixed(0)} kg`, 'Body Weight']} contentStyle={{ borderRadius: '8px', border: '1px solid #FFE0B2', backgroundColor: '#ffffff' }} />
-                    <Area type="monotone" dataKey="weight" stroke="#1B3A6B" strokeWidth={2} fill="#E8EEF6" fillOpacity={0.8} />
-                    <Brush dataKey="timestamp" height={24} stroke="#1B3A6B" fill="#E8EEF6" travellerWidth={10} />
+                  <Area type="monotone" dataKey="weight" stroke="#1B3A6B" strokeWidth={2} fill="#E8EEF6" fillOpacity={0.8} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -360,13 +510,16 @@ export function LifecycleShowcase({ tag }: { tag: string }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!open || data) return;
+    if (!open) return;
+    let cancelled = false;
     setLoading(true);
+    setData(null);
     fetch(`${API_BASE}/cattle/${encodeURIComponent(tag)}/lifecycle`)
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [open, tag, data]);
+      .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, tag]);
 
   return (
     <>
@@ -381,7 +534,7 @@ export function LifecycleShowcase({ tag }: { tag: string }) {
               <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 Lifecycle Timeline <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-black text-[10px] font-bold tracking-wider">SHOWCASE</span>
               </h3>
-              <p className="text-xs md:text-sm text-gray-600 dark:text-zinc-400 mt-1">Master historical array 2000–2025 • Reproduction • Milk • Weight • Lactation</p>
+              <p className="text-xs md:text-sm text-gray-600 dark:text-zinc-400 mt-1">Starts at birth • Reproduction • Milk • Weight • Lactation</p>
             </div>
           </div>
           <button
@@ -407,12 +560,14 @@ export function LifecycleShowcase({ tag }: { tag: string }) {
             ) : data ? (
               <div className="flex-1 overflow-auto">
                 <TimelineView
+                  key={tag}
                   events={data.reproductionEvents || []}
                   lactations={data.lactationPeriods || []}
                   milkData={data.milkData || []}
                   weightData={data.weightData || []}
                   treatmentEvents={data.treatmentEvents || []}
                   tagName={data.name || tag}
+                  birthDate={data.date_of_birth}
                 />
               </div>
             ) : (
